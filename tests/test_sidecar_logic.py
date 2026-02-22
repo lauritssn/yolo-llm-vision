@@ -88,6 +88,17 @@ def test_coco_names_and_name_to_id_consistent() -> None:
         assert sidecar_main.COCO_NAMES[idx] == name
 
 
+def test_root_endpoint() -> None:
+    """GET / returns service info and avoids 404."""
+    client = TestClient(sidecar_main.app)
+    resp = client.get("/")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data.get("service") == "YOLO sidecar"
+    assert data.get("docs") == "/docs"
+    assert data.get("health") == "/health"
+
+
 def test_health_endpoint() -> None:
     client = TestClient(sidecar_main.app)
     resp = client.get("/health")

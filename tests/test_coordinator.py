@@ -216,3 +216,47 @@ async def test_analyze_camera_concurrent_returns_empty(
         await task1
 
     assert result2 == {}
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_analyze_camera_on_exception_returns_error_and_message(
+    coordinator: YoloLLMVisionCoordinator,
+) -> None:
+    """When analyze_camera raises, result includes entity_id, error=True, and message."""
+    with patch(
+        "custom_components.yolo_llm_vision.coordinator.async_get_image",
+        AsyncMock(side_effect=OSError("Connection refused")),
+    ):
+        result = await coordinator.analyze_camera("camera.front_door")
+
+    assert result.get("entity_id") == "camera.front_door"
+    assert result.get("error") is True
+    assert "message" in result
+    assert "Connection refused" in result["message"]
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_analyze_camera_sidecar_4xx_returns_error_and_message(
+    coordinator: YoloLLMVisionCoordinator,
+) -> None:
+    """When sidecar returns 4xx/5xx, result includes error and message with detail."""
+    respx.post("http://sidecar:8000/detect").mock(
+        return_value=httpx.Response(
+            502,
+            json={"detail": "Failed to fetch image"},
+        ),
+    )
+    fake_image = Image(content_type="image/jpeg", content=b"fake_jpeg_bytes")
+    with patch(
+        "custom_components.yolo_llm_vision.coordinator.async_get_image",
+        AsyncMock(return_value=fake_image),
+    ):
+        result = await coordinator.analyze_camera("camera.front_door")
+
+    assert result.get("entity_id") == "camera.front_door"
+    assert result.get("error") is True
+    assert "message" in result
+    assert "502" in result["message"]
+    assert "Failed to fetch image" in result["message"]

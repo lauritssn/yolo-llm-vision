@@ -7,6 +7,7 @@ import base64
 import logging
 import os
 import time
+from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -60,7 +61,12 @@ DEFAULT_BOX_COLOR = (0, 200, 255)
 _executor = ThreadPoolExecutor(max_workers=4)
 _model: YOLO | None = None
 
-app = FastAPI(title="YOLO Object Detection Sidecar", version="2.0.3")
+@asynccontextmanager
+async def lifespan(app: FastAPI):  # noqa: ARG001
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(_executor, _load_model)
+    logger.info("Sidecar ready — model=%s, threshold=%.2f", YOLO_MODEL, CONFIDENCE_THRESHOLD)
+    yield
 
 
 def _load_model() -> YOLO:
@@ -74,11 +80,21 @@ def _load_model() -> YOLO:
     return _model
 
 
-@app.on_event("startup")
-async def startup() -> None:
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(_executor, _load_model)
-    logger.info("Sidecar ready — model=%s, threshold=%.2f", YOLO_MODEL, CONFIDENCE_THRESHOLD)
+app = FastAPI(
+    title="YOLO Object Detection Sidecar",
+    version="2.0.4",
+    lifespan=lifespan,
+)
+
+
+@app.get("/")
+async def root() -> dict[str, str]:
+    """Root route to avoid 404 when hitting the sidecar base URL."""
+    return {
+        "service": "YOLO sidecar",
+        "docs": "/docs",
+        "health": "/health",
+    }
 
 
 class DetectRequest(BaseModel):

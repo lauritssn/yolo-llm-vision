@@ -202,6 +202,8 @@ See [blueprint.md](blueprint.md) for how to configure the blueprint inputs.
 
 **Settings > Devices & Services** > find YOLO + LLM Vision > **Configure**
 
+Reconfiguring the integration updates detection classes and other options (e.g. if new defaults are released).
+
 ### Add-on Settings (HAOS Only)
 
 **Settings > Add-ons** > YOLO Object Detection > **Configuration** tab

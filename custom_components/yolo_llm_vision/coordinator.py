@@ -238,12 +238,16 @@ class YoloLLMVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
             self.async_set_updated_data(dict(self._states))
             return result
 
-        except Exception:
+        except Exception as e:
             _LOGGER.exception(
                 "Error analyzing camera %s (exception above); returning error: true",
                 entity_id,
             )
-            return {"entity_id": entity_id, "error": True}
+            return {
+                "entity_id": entity_id,
+                "error": True,
+                "message": str(e),
+            }
         finally:
             self._analyzing.discard(entity_id)
 
@@ -280,7 +284,18 @@ class YoloLLMVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
                     resp.status_code,
                     (resp.text[:500] if resp.text else "(empty)"),
                 )
-                resp.raise_for_status()
+                if not resp.is_success:
+                    try:
+                        body = resp.json()
+                        detail = (
+                            body.get("detail")
+                            if isinstance(body.get("detail"), str)
+                            else resp.text
+                        )
+                    except Exception:
+                        detail = resp.text
+                    msg = detail or f"HTTP {resp.status_code}"
+                    raise ValueError(f"Sidecar error ({resp.status_code}): {msg}")
                 data = resp.json()
                 _LOGGER.debug(
                     "Sidecar response JSON keys: %s",
