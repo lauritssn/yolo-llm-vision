@@ -1,0 +1,38 @@
+name: YOLO Object Detection
+version: "2.0.0"
+slug: yolo_sidecar
+description: >-
+  Local YOLOv8 object detection sidecar for the YOLO + LLM Vision integration.
+  Detects people, animals, vehicles, and other objects in camera images.
+  Runs entirely locally — no cloud API costs.
+url: "https://github.com/lauritssn/yolo-llm-vision"
+startup: application
+boot: auto
+host_network: false
+ingress: false
+init: false
+
+arch:
+  - amd64
+  - aarch64
+
+ports:
+  8000/tcp: 8000
+ports_description:
+  8000/tcp: "YOLO detection API"
+
+map:
+  - media:rw
+
+options:
+  model: "yolov8n.pt"
+  confidence_threshold: 0.5
+  log_level: "info"
+
+schema:
+  model: "str"
+  confidence_threshold: "float(0.1,1.0)"
+  log_level: "list(debug|info|warning|error)"
+
+panel_icon: "mdi:cctv"
+panel_color: "#41BDF5"

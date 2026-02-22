@@ -1,0 +1,61 @@
+{
+  "exceptions": {
+    "no_loaded_entries": {
+      "message": "No YOLO + LLM Vision configuration entries are loaded. Add the integration first via Settings > Devices & Services."
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "YOLO + LLM Vision",
+        "description": "Configure your YOLO detection sidecar. LLM Vision fields appear only when that integration is installed.",
+        "data": {
+          "sidecar_url": "YOLO sidecar URL",
+          "cameras": "Cameras to monitor",
+          "confidence_threshold": "Confidence threshold",
+          "detection_classes": "Object classes to detect",
+          "draw_boxes": "Draw bounding boxes on detections",
+          "save_annotated_image": "Save annotated snapshots to /media",
+          "llm_provider": "LLM Vision provider (optional)",
+          "llm_prompt": "LLM Vision prompt (optional)",
+          "notify_service": "Notification service (e.g. notify.mobile_app)"
+        },
+        "data_description": {
+          "sidecar_url": "URL of the YOLOv8 Docker sidecar, e.g. http://192.168.1.50:8000",
+          "confidence_threshold": "Minimum confidence to accept a detection (0.1 – 1.0)",
+          "detection_classes": "Which COCO object classes should trigger a detection. Person and dog are common for security cameras. Note: deer is not a standard COCO class — use horse as a close proxy.",
+          "draw_boxes": "Overlay coloured bounding boxes on the camera snapshot for each detection",
+          "save_annotated_image": "Save the annotated image to the Home Assistant /media folder",
+          "notify_service": "Full service name, e.g. notify.mobile_app_phone or telegram_bot.send_message"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "YOLO + LLM Vision Options",
+        "description": "Update your YOLO + LLM Vision settings.",
+        "data": {
+          "sidecar_url": "YOLO sidecar URL",
+          "cameras": "Cameras to monitor",
+          "confidence_threshold": "Confidence threshold",
+          "detection_classes": "Object classes to detect",
+          "draw_boxes": "Draw bounding boxes on detections",
+          "save_annotated_image": "Save annotated snapshots to /media",
+          "llm_provider": "LLM Vision provider (optional)",
+          "llm_prompt": "LLM Vision prompt (optional)",
+          "notify_service": "Notification service"
+        },
+        "data_description": {
+          "sidecar_url": "URL of the YOLOv8 Docker sidecar",
+          "confidence_threshold": "Minimum confidence to accept a detection (0.1 – 1.0)",
+          "detection_classes": "Which COCO object classes should trigger a detection",
+          "draw_boxes": "Overlay coloured bounding boxes on the camera snapshot",
+          "save_annotated_image": "Save the annotated image to /media",
+          "notify_service": "Full service name, e.g. notify.mobile_app_phone"
+        }
+      }
+    }
+  }
+}

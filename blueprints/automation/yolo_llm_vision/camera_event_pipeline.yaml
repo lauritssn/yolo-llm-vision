@@ -1,0 +1,335 @@
+blueprint:
+  name: "YOLO Camera Security Pipeline"
+  description: >-
+    Triggers on a motion/event, grabs a camera snapshot, runs it through YOLO
+    to detect objects (person, dog, etc.), and only calls the expensive AI
+    analysis when YOLO confirms a relevant detection. Sends different
+    notifications based on the AI threat assessment.
+
+    Requires the yolo_llm_vision integration to be configured.
+  domain: automation
+  author: "YOLO + LLM Vision"
+  source_url: "https://github.com/lauritssn/yolo-llm-vision/blob/main/blueprints/automation/yolo_llm_vision/camera_event_pipeline.yaml"
+
+  input:
+    camera_entity:
+      name: Camera
+      description: The camera entity to take a snapshot from.
+      selector:
+        entity:
+          domain: camera
+
+    trigger_type:
+      name: Trigger type
+      description: >-
+        Choose how the automation is triggered. "Event" fires on a specific
+        HA event name, "Motion sensor" fires on a binary_sensor turning on.
+      default: event
+      selector:
+        select:
+          options:
+            - label: "Event"
+              value: event
+            - label: "Motion sensor (binary_sensor)"
+              value: motion_sensor
+
+    trigger_event_type:
+      name: Trigger event name
+      description: >-
+        HA event type to listen for (only used when trigger type is "Event").
+        Leave default if using motion sensor instead.
+      default: ""
+      selector:
+        text: {}
+
+    trigger_motion_entity:
+      name: Motion sensor entity
+      description: >-
+        Binary sensor for motion detection (only used when trigger type is
+        "Motion sensor"). Leave default if using event instead.
+      default: ""
+      selector:
+        entity:
+          domain: binary_sensor
+
+    ai_task_entity:
+      name: AI Task entity
+      description: >-
+        The ai_task entity to use for detailed analysis (e.g.
+        ai_task.openai_ai_task). Leave empty to skip AI analysis entirely.
+      default: ""
+      selector:
+        entity:
+          domain: ai_task
+
+    ai_task_name:
+      name: AI Task name
+      description: A descriptive name for the AI task (shown in logs).
+      default: "Security Camera Analysis"
+      selector:
+        text: {}
+
+    ai_instructions:
+      name: AI analysis instructions
+      description: >-
+        Prompt for the AI analysis. The AI only runs when YOLO detects a
+        relevant object first. Use THREAT DETECTED at the end of the prompt
+        instructions to allow the blueprint to distinguish between threat
+        and all-clear notifications.
+      default: >-
+        Analyze this image from a security camera.
+
+        Report ONLY on:
+        1. PERSONS/PEOPLE - any humans visible
+        2. BIG ANIMALS - large dogs, deer, or other large animals (NOT cats or small animals)
+        3. CARS/VEHICLES - but ONLY if they are NOT parked in the driveway
+
+        Provide a brief description of what you see.
+
+        IMPORTANT: If you detect any person, big animal, or non-parked vehicle,
+        end your response with exactly: "THREAT DETECTED"
+
+        If there are NO threats, describe the scene neutrally WITHOUT adding
+        any conclusion.
+      selector:
+        text:
+          multiline: true
+
+    snapshot_delay_seconds:
+      name: Snapshot delay
+      description: >-
+        Seconds to wait after taking the snapshot before sending it to AI.
+        Gives the camera time to write the file.
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 10
+          step: 1
+
+    threat_notification_title:
+      name: Threat notification title
+      description: Title for the notification when a threat is detected.
+      default: "🚨 SECURITY ALERT"
+      selector:
+        text: {}
+
+    clear_notification_title:
+      name: All-clear notification title
+      description: Title for the notification when no threat is detected.
+      default: "✅ All Clear"
+      selector:
+        text: {}
+
+    send_telegram:
+      name: Send Telegram notifications
+      description: Enable to send results via Telegram bot.
+      default: true
+      selector:
+        boolean: {}
+
+    send_photo_with_telegram:
+      name: Send snapshot photo with Telegram
+      description: Attach the camera snapshot image to the Telegram message.
+      default: true
+      selector:
+        boolean: {}
+
+    notify_service:
+      name: Alternative notify service (optional)
+      description: >-
+        Full service name for an alternative notification service
+        (e.g. notify.mobile_app_phone). Leave empty to only use Telegram.
+      default: ""
+      selector:
+        text: {}
+
+    cooldown_seconds:
+      name: Cooldown between triggers (seconds)
+      description: >-
+        Minimum time between consecutive analysis runs to avoid flooding.
+      default: 30
+      selector:
+        number:
+          min: 5
+          max: 300
+          step: 5
+
+mode: queued
+max: 5
+
+variables:
+  camera_id: !input camera_entity
+  camera_short_name: "{{ camera_id.split('.')[-1] | replace('_', ' ') | title }}"
+  snapshot_path: "/config/www/yolo_{{ camera_id | replace('.', '_') }}_{{ now().strftime('%Y%m%d_%H%M%S') }}.jpg"
+  ai_entity: !input ai_task_entity
+  task_name: !input ai_task_name
+  instructions: !input ai_instructions
+  delay_secs: !input snapshot_delay_seconds
+  trigger_mode: !input trigger_type
+  telegram_enabled: !input send_telegram
+  telegram_photo: !input send_photo_with_telegram
+  alt_notify: !input notify_service
+  threat_title: !input threat_notification_title
+  clear_title: !input clear_notification_title
+
+triggers:
+  - trigger: event
+    event_type: !input trigger_event_type
+    id: event_trigger
+    enabled: "{{ trigger_mode == 'event' }}"
+  - trigger: state
+    entity_id: !input trigger_motion_entity
+    to: "on"
+    id: motion_trigger
+    enabled: "{{ trigger_mode == 'motion_sensor' }}"
+
+actions:
+  # 1. Take snapshot
+  - action: camera.snapshot
+    target:
+      entity_id: !input camera_entity
+    data:
+      filename: "{{ snapshot_path }}"
+
+  - delay:
+      seconds: "{{ delay_secs }}"
+
+  # 2. Run YOLO detection via integration service
+  - action: yolo_llm_vision.analyze
+    data:
+      entity_id: !input camera_entity
+    response_variable: yolo_result
+
+  # 3. Gate: only continue if YOLO detected something
+  - condition: template
+    value_template: "{{ yolo_result.detected | default(false) }}"
+
+  # 4. Branch: AI analysis or YOLO-only notification
+  - choose:
+      # --- Path A: AI analysis is configured ---
+      - conditions:
+          - condition: template
+            value_template: "{{ ai_entity | length > 0 }}"
+        sequence:
+          - action: ai_task.generate_data
+            data:
+              entity_id: "{{ ai_entity }}"
+              task_name: "{{ task_name }}"
+              attachments:
+                - media_content_id: "media-source://camera/{{ camera_id }}"
+                  media_content_type: image/jpeg
+              instructions: "{{ instructions }}"
+            response_variable: ai_response
+
+          - delay:
+              seconds: 1
+
+          - choose:
+              # Threat detected by AI
+              - conditions:
+                  - condition: template
+                    value_template: "{{ 'THREAT DETECTED' in (ai_response.data | default('')) }}"
+                sequence:
+                  - if:
+                      - condition: template
+                        value_template: "{{ telegram_enabled }}"
+                    then:
+                      - action: telegram_bot.send_message
+                        data:
+                          message: >-
+                            {{ threat_title }} — {{ camera_short_name }}
+
+                            {{ ai_response.data }}
+
+                            YOLO: {{ yolo_result.classes_detected | default([]) | join(', ') }}
+                            (confidence: {{ (yolo_result.confidence | default(0) * 100) | round(0) }}%)
+
+                            🕐 {{ now().strftime('%H:%M:%S') }}
+                      - if:
+                          - condition: template
+                            value_template: "{{ telegram_photo }}"
+                        then:
+                          - action: telegram_bot.send_photo
+                            data:
+                              file: "{{ snapshot_path }}"
+                              caption: "📷 {{ camera_short_name }} — Threat Detected"
+
+                  - if:
+                      - condition: template
+                        value_template: "{{ alt_notify | length > 0 }}"
+                    then:
+                      - action: "{{ alt_notify }}"
+                        data:
+                          title: "{{ threat_title }} — {{ camera_short_name }}"
+                          message: "{{ ai_response.data }}"
+
+            # All clear from AI
+            default:
+              - if:
+                  - condition: template
+                    value_template: "{{ telegram_enabled }}"
+                then:
+                  - action: telegram_bot.send_message
+                    data:
+                      message: >-
+                        {{ clear_title }} — {{ camera_short_name }}
+
+                        {{ ai_response.data }}
+
+                        YOLO: {{ yolo_result.classes_detected | default([]) | join(', ') }}
+
+                        🕐 {{ now().strftime('%H:%M:%S') }}
+                  - if:
+                      - condition: template
+                        value_template: "{{ telegram_photo }}"
+                    then:
+                      - action: telegram_bot.send_photo
+                        data:
+                          file: "{{ snapshot_path }}"
+                          caption: "📷 {{ camera_short_name }}"
+
+              - if:
+                  - condition: template
+                    value_template: "{{ alt_notify | length > 0 }}"
+                then:
+                  - action: "{{ alt_notify }}"
+                    data:
+                      title: "{{ clear_title }} — {{ camera_short_name }}"
+                      message: "{{ ai_response.data }}"
+
+    # --- Path B: No AI entity configured, YOLO-only notification ---
+    default:
+      - if:
+          - condition: template
+            value_template: "{{ telegram_enabled }}"
+        then:
+          - action: telegram_bot.send_message
+            data:
+              message: >-
+                {{ threat_title }} — {{ camera_short_name }}
+
+                YOLO detected: {{ yolo_result.classes_detected | default([]) | join(', ') }}
+                Count: {{ yolo_result.detection_count | default(0) }}
+                Confidence: {{ (yolo_result.confidence | default(0) * 100) | round(0) }}%
+
+                🕐 {{ now().strftime('%H:%M:%S') }}
+          - if:
+              - condition: template
+                value_template: "{{ telegram_photo }}"
+            then:
+              - action: telegram_bot.send_photo
+                data:
+                  file: "{{ snapshot_path }}"
+                  caption: "📷 {{ camera_short_name }} — {{ yolo_result.classes_detected | default([]) | join(', ') }}"
+
+      - if:
+          - condition: template
+            value_template: "{{ alt_notify | length > 0 }}"
+        then:
+          - action: "{{ alt_notify }}"
+            data:
+              title: "{{ threat_title }} — {{ camera_short_name }}"
+              message: >-
+                YOLO detected: {{ yolo_result.classes_detected | default([]) | join(', ') }}
+                (confidence: {{ (yolo_result.confidence | default(0) * 100) | round(0) }}%)

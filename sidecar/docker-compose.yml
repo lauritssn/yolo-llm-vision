@@ -1,0 +1,38 @@
+# =============================================================================
+# YOLO Sidecar — Standalone Deployment
+# =============================================================================
+# Use this if you run the sidecar separately from your HA docker-compose.
+# Make sure this container can reach HA and vice versa (see docs/setup.md).
+#
+# For the recommended approach (adding the sidecar to your existing HA
+# docker-compose), see docs/setup.md → Option A.
+# =============================================================================
+
+services:
+  yolo-sidecar:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yolo-sidecar
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/models
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+    # --- NVIDIA GPU acceleration (uncomment if you have a GPU) ---
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]

@@ -1,0 +1,23 @@
+analyze:
+  name: Analyze camera
+  description: >-
+    Grab a snapshot from a camera, run it through YOLO for object detection,
+    and optionally call LLM Vision for detailed analysis. Returns the detection
+    result including detected classes, confidence, and count.
+  fields:
+    entity_id:
+      name: Camera entity
+      description: The camera entity ID to analyze.
+      required: true
+      example: camera.front_door
+      selector:
+        entity:
+          domain: camera
+    force_llm:
+      name: Force LLM analysis
+      description: >-
+        Force LLM Vision analysis even if it is not configured in the
+        integration options. Requires llmvision to be installed.
+      default: false
+      selector:
+        boolean:

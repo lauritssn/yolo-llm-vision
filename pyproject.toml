@@ -1,0 +1,27 @@
+[project]
+name = "yolo-llm-vision"
+version = "2.0.0"
+requires-python = ">=3.13.2"
+description = "YOLO + LLM Vision HACS integration for Home Assistant"
+readme = "README.md"
+license = { text = "MIT" }
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "respx>=0.22",
+    "httpx>=0.27",
+    "voluptuous",
+    "pydantic>=2.0",
+    "fastapi",
+    "homeassistant>=2025.5.0",
+    "numpy",
+    "PyTurboJPEG",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+filterwarnings = ["ignore::DeprecationWarning"]

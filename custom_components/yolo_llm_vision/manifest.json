@@ -1,0 +1,14 @@
+{
+  "domain": "yolo_llm_vision",
+  "name": "YOLO + LLM Vision",
+  "version": "2.0.0",
+  "documentation": "https://github.com/lauritssn/yolo-llm-vision",
+  "issue_tracker": "https://github.com/lauritssn/yolo-llm-vision/issues",
+  "after_dependencies": ["camera", "llmvision"],
+  "codeowners": ["@lauritssn"],
+  "requirements": ["httpx>=0.27.0"],
+  "config_flow": true,
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "homeassistant": "2025.1.0"
+}

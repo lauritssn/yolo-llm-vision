@@ -38,7 +38,7 @@ Camera Motion
 **Home Assistant OS** (QNAP VM, Raspberry Pi, etc.) — install as an add-on:
 
 1. **Settings > Add-ons > Add-on Store** > three-dot menu > **Repositories**
-2. Add `https://github.com/YOUR_USERNAME/yolo-llm-vision` and click **Add**
+2. Add `https://github.com/lauritssn/yolo-llm-vision` and click **Add**
 3. Find **YOLO Object Detection** and click **Install**
 4. Click **Start**
 
@@ -73,7 +73,7 @@ Go to **Settings > Devices & Services > Add Integration > YOLO + LLM Vision**.
 Go to **Settings → Automations → Blueprints → Import Blueprint** and paste:
 
 ```
-https://github.com/YOUR_USERNAME/yolo-llm-vision/blob/main/blueprints/automation/yolo_llm_vision/camera_event_pipeline.yaml
+https://github.com/lauritssn/yolo-llm-vision/blob/main/blueprints/automation/yolo_llm_vision/camera_event_pipeline.yaml
 ```
 
 Or copy the file to `config/blueprints/automation/yolo_llm_vision/`.
