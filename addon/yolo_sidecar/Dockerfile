@@ -18,7 +18,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Pre-download default model and copy to /models
 RUN python3 -c "from ultralytics import YOLO; YOLO('yolov8n.pt')" \
     && mkdir -p /models \
-    && find /root -name 'yolov8n.pt' -exec cp {} /models/yolov8n.pt \; 2>/dev/null || true
+    && find / -name 'yolov8n.pt' -not -path '/proc/*' -not -path '/sys/*' \
+       -exec cp {} /models/yolov8n.pt \; 2>/dev/null \
+    && ls -la /models/yolov8n.pt
 
 COPY main.py .
 COPY run.sh /

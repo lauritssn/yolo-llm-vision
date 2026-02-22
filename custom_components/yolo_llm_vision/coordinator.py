@@ -253,10 +253,11 @@ class YoloLLMVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
                 "Error analyzing camera %s (exception above); returning error: true",
                 entity_id,
             )
+            error_msg = str(e) or repr(e)
             return {
                 "entity_id": entity_id,
                 "error": True,
-                "message": str(e),
+                "message": error_msg,
             }
         finally:
             self._analyzing.discard(entity_id)

@@ -251,11 +251,11 @@ async def health() -> dict[str, str]:
 
 
 @app.get("/models")
-async def list_models() -> dict[str, list[str]]:
-    models: list[str] = []
+async def list_models() -> dict[str, Any]:
+    available: list[str] = []
     if MODELS_DIR.exists():
-        models = [f.name for f in MODELS_DIR.glob("*.pt")]
-    return {"models": sorted(models)}
+        available = sorted(f.name for f in MODELS_DIR.glob("*.pt"))
+    return {"active": YOLO_MODEL, "available": available}
 
 
 @app.get("/classes")
