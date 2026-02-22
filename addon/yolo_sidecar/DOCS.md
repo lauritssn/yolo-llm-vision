@@ -69,6 +69,21 @@ Or use your HAOS IP with the exposed port:
 http://<your-haos-ip>:8000
 ```
 
+## Building the add-on image locally
+
+To test the add-on build before installing via Supervisor (e.g. to avoid long waits or to debug build failures):
+
+```bash
+cd addon/yolo_sidecar
+docker build -t yolo-sidecar-addon:local .
+```
+
+Then run it (optional):
+
+```bash
+docker run --rm -p 8000:8000 yolo-sidecar-addon:local
+```
+
 ## Verifying the Add-on
 
 Check the add-on log tab — you should see:

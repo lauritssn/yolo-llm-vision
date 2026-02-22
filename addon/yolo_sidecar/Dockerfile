@@ -1,11 +1,12 @@
-ARG BUILD_FROM
-FROM ${BUILD_FROM}
+# Explicit Debian base: Supervisor may ignore build.yaml and use Alpine by default.
+# PyTorch/ultralytics need glibc (Debian); they have no wheels on Alpine (musl).
+FROM python:3.12-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Debian: runtime deps for OpenCV
+# Runtime deps for OpenCV
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
