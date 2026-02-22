@@ -1,6 +1,6 @@
 [project]
 name = "yolo-llm-vision"
-version = "2.0.4"
+version = "2.0.5"
 requires-python = ">=3.13.2"
 description = "YOLO + LLM Vision HACS integration for Home Assistant"
 readme = "README.md"

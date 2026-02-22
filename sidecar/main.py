@@ -82,7 +82,7 @@ def _load_model() -> YOLO:
 
 app = FastAPI(
     title="YOLO Object Detection Sidecar",
-    version="2.0.4",
+    version="2.0.5",
     lifespan=lifespan,
 )
 
