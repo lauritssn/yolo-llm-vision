@@ -4,6 +4,8 @@ This add-on runs a local YOLOv8 object detection server. It is used by the
 **YOLO + LLM Vision** HACS integration to detect people, animals, vehicles,
 and other objects in camera images before calling expensive AI analysis.
 
+**Install from the Add-on Store:** **Settings > Add-ons > Add-on Store** → ⋮ → **Repositories** → add `https://github.com/lauritssn/yolo-llm-vision` → then install **YOLO Object Detection**. Full installation steps are in the repo [README](https://github.com/lauritssn/yolo-llm-vision#quick-start) and [docs/setup.md](https://github.com/lauritssn/yolo-llm-vision/blob/main/docs/setup.md).
+
 ## Installation time
 
 **Installation and first start can take a long time** (often several minutes).

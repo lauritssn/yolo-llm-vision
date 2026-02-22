@@ -52,6 +52,8 @@ ai_task.generate_data
 
 ## Installing the Blueprint
 
+If you have not yet installed the YOLO sidecar and the YOLO + LLM Vision integration, do that first — see [Installation and Setup](setup.md).
+
 ### From URL
 
 1. Go to **Settings > Automations & Scenes > Blueprints**

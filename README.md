@@ -37,12 +37,14 @@ Camera Motion
 
 **Home Assistant OS** (QNAP VM, Raspberry Pi, etc.) — install as an add-on:
 
-1. **Settings > Add-ons > Add-on Store** > three-dot menu > **Repositories**
-2. Add `https://github.com/lauritssn/yolo-llm-vision` and click **Add**
-3. Find **YOLO Object Detection** and click **Install**
-4. Click **Start**
+1. **Settings > Add-ons > Add-on Store** > three-dot menu (⋮) > **Repositories**
+2. Add repository URL: `https://github.com/lauritssn/yolo-llm-vision` → **Add** → **Close**
+3. In the Add-on Store, find **YOLO Object Detection** → **Install**
+4. Open the add-on → **Start**
 
-**Docker installs** — run the sidecar container alongside HA:
+The first install can take several minutes (image build and model download). Wait until the add-on **Log** shows “Sidecar ready” before configuring the integration.
+
+**Docker installs** (HA Container, no add-ons):
 
 ```bash
 cd sidecar
@@ -52,9 +54,16 @@ docker compose up -d
 
 See [docs/setup.md](docs/setup.md) for full details on both methods.
 
-### 2. Install the Integration
+### 2. Install the Integration (HACS)
 
-Add this repository to HACS as a custom repository, then install **YOLO + LLM Vision**.
+1. Go to **HACS > Integrations**
+2. Open the three-dot menu (⋮) → **Custom repositories**
+3. **Repository:** `https://github.com/lauritssn/yolo-llm-vision`
+4. **Type:** **Integration**
+5. Click **Add**
+6. In HACS, go to **Integrations** → **Explore & Download** (or **+**), search for **YOLO + LLM Vision** → **Download**
+7. **Restart Home Assistant**
+8. Go to **Settings > Devices & Services > Add Integration** → search **YOLO + LLM Vision** → configure
 
 ### 3. Configure
 
@@ -120,10 +129,12 @@ The sidecar uses standard COCO-80 classes. Configure which ones trigger a detect
 |---|---|---|
 | person | 0 | yes |
 | dog | 16 | yes |
-| car | 2 | no |
-| truck | 7 | no |
-| horse | 17 | no |
-| bear | 21 | no |
+| car | 2 | yes |
+| truck | 7 | yes |
+| horse | 17 | yes |
+| cow | 19 | yes |
+| bear | 21 | yes |
+| wolf | — | optional (custom models only; not in COCO) |
 | cat | 15 | no (excluded) |
 | bird | 14 | no (excluded) |
 

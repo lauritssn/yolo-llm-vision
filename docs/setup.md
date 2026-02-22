@@ -1,5 +1,14 @@
 # Installation and Setup
 
+You need two things: the **YOLO sidecar** (runs detection) and the **YOLO + LLM Vision** integration (connects HA to the sidecar). Install the sidecar first, then the integration via HACS.
+
+| Step | What | Where |
+|------|------|--------|
+| 1 | YOLO sidecar | Add-on Store (HAOS) or Docker (see below) |
+| 2 | YOLO + LLM Vision integration | HACS → Custom repositories → Type: **Integration** |
+| 3 | Configure | Settings > Devices & Services > Add Integration |
+| 4 | (Optional) Blueprint | Settings > Automations & Scenes > Blueprints > Import |
+
 ## Prerequisites
 
 1. **Home Assistant** 2025.1.0 or newer
@@ -24,18 +33,17 @@ directly from the HA UI.
 3. Add: `https://github.com/lauritssn/yolo-llm-vision`
 4. Click **Add** then **Close**
 5. Find **YOLO Object Detection** in the store and click **Install**
-6. Go to the add-on **Configuration** tab and adjust settings if needed:
+6. **Important:** The first build can take **5–15 minutes** (Debian base image and PyTorch download). Do not cancel.
+7. When installation finishes, open the add-on → **Configuration** tab (optional):
    - **Model**: `yolov8n.pt` (default, fastest) or `yolov8s.pt` (more accurate)
    - **Confidence threshold**: `0.5` (default)
-7. Click **Start**
-8. Check the **Log** tab — you should see:
+8. Click **Start**
+9. Check the **Log** tab — wait until you see:
    ```
    Starting YOLO sidecar — model=yolov8n.pt, threshold=0.5
-   Sidecar ready
+   Sidecar ready — model=yolov8n.pt, threshold=0.50
    ```
-
-The first start takes a few minutes while the model downloads. After that,
-starts are fast.
+   The first start also downloads the YOLO model (~6 MB). After that, starts are fast.
 
 #### Option B: Local Add-on (No GitHub Needed)
 
@@ -51,6 +59,7 @@ HAOS instance.
    ├── config.yaml
    ├── Dockerfile
    ├── main.py
+   ├── requirements.txt
    └── run.sh
    ```
 4. Go to **Settings > Add-ons > Add-on Store**
@@ -146,14 +155,14 @@ curl http://localhost:8000/classes
 
 ## Step 2: Install the Integration via HACS
 
-1. Open Home Assistant
-2. Go to **HACS > Integrations**
-3. Click the three-dot menu (top right) > **Custom repositories**
-4. Add: `https://github.com/lauritssn/yolo-llm-vision`
-5. Category: **Integration**
-6. Click **Add**
-7. Search for "YOLO + LLM Vision" and click **Install**
-8. **Restart Home Assistant**
+1. Open Home Assistant and go to **HACS > Integrations**
+2. Click the three-dot menu (⋮) > **Custom repositories**
+3. **Repository:** enter `https://github.com/lauritssn/yolo-llm-vision`
+4. **Type:** select **Integration**
+5. Click **Add**, then close the dialog
+6. Go to **HACS > Integrations** → **Explore & Download** (or the **+** button), search for **YOLO + LLM Vision**, then **Download**
+7. **Restart Home Assistant**
+8. Go to **Settings > Devices & Services > Add Integration**, search for **YOLO + LLM Vision**, and complete the configuration (see Step 3)
 
 ## Step 3: Configure the Integration
 
@@ -223,10 +232,9 @@ curl -X POST http://localhost:8000/detect \
 
 Check the add-on **Log** tab. Common issues:
 
-- **Out of memory**: The YOLO model needs RAM. `yolov8n.pt` needs ~300 MB,
-  larger models need more. Check your QNAP VM has enough memory allocated.
-- **Build failed**: The first build compiles native packages. On aarch64 this
-  can take 10–15 minutes. Be patient.
+- **Out of memory**: The YOLO model needs RAM. `yolov8n.pt` needs ~300 MB;
+  larger models need more. Ensure your QNAP VM has enough memory allocated.
+- **Build failed / takes very long**: The first build downloads a Debian base image and PyTorch (several hundred MB). It can take **5–15 minutes** (longer on aarch64). Let it finish; later updates are faster.
 
 ### "Connection refused" in integration setup
 
