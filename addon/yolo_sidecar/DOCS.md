@@ -4,6 +4,14 @@ This add-on runs a local YOLOv8 object detection server. It is used by the
 **YOLO + LLM Vision** HACS integration to detect people, animals, vehicles,
 and other objects in camera images before calling expensive AI analysis.
 
+## Installation time
+
+**Installation and first start can take a long time** (often several minutes).
+The add-on has to build a Docker image and, on first run, download the YOLOv8
+model (~6 MB for the default model). This is normal — later starts are much
+faster. Wait for the add-on log to show “Sidecar ready” before configuring the
+integration.
+
 ## How It Works
 
 The add-on starts a FastAPI server on port 8000. The YOLO + LLM Vision

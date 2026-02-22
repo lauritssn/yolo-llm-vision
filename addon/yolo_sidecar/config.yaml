@@ -5,6 +5,7 @@ description: >-
   Local YOLOv8 object detection sidecar for the YOLO + LLM Vision integration.
   Detects people, animals, vehicles, and other objects in camera images.
   Runs entirely locally — no cloud API costs.
+  Installation and first start may take several minutes (image build and model download).
 url: "https://github.com/lauritssn/yolo-llm-vision"
 startup: application
 boot: auto
