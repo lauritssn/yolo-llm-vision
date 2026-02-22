@@ -170,6 +170,9 @@ class YoloLLMVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
         result: dict[str, Any] = {"entity_id": entity_id}
 
         try:
+            # #region agent log
+            _LOGGER.warning("[DBG-1] pre_image: entity=%s sidecar_url=%s classes=%s config_keys=%s", entity_id, self.sidecar_url, self.detection_classes, list(self._config.keys()))
+            # #endregion
             _LOGGER.debug("Fetching camera snapshot for entity_id=%s", entity_id)
             image = await async_get_image(self.hass, entity_id)
             image_b64 = base64.b64encode(image.content).decode("ascii")
@@ -180,6 +183,9 @@ class YoloLLMVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
                 len(image_b64),
             )
 
+            # #region agent log
+            _LOGGER.warning("[DBG-2] post_image: entity=%s image_bytes=%d sidecar_url=%s", entity_id, len(image.content), self.sidecar_url)
+            # #endregion
             yolo = await self._call_sidecar(image_b64)
 
             cam.inference_time_ms = yolo.get("inference_time_ms", 0)
@@ -239,6 +245,10 @@ class YoloLLMVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
             return result
 
         except Exception as e:
+            # #region agent log
+            import traceback as _tb
+            _LOGGER.warning("[DBG-4] EXCEPTION: type=%s str=%r repr=%r args=%s mro=%s tb=%s", type(e).__name__, str(e), repr(e), [str(a) for a in e.args], [c.__name__ for c in type(e).__mro__], _tb.format_exc()[-2000:])
+            # #endregion
             _LOGGER.exception(
                 "Error analyzing camera %s (exception above); returning error: true",
                 entity_id,
@@ -259,6 +269,9 @@ class YoloLLMVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
     # -- sidecar call ---------------------------------------------------------
 
     async def _call_sidecar(self, image_b64: str) -> dict[str, Any]:
+        # #region agent log
+        _LOGGER.warning("[DBG-3] _call_sidecar entry: sidecar_url=%s b64_len=%d", self.sidecar_url, len(image_b64))
+        # #endregion
         url = f"{self.sidecar_url.rstrip('/')}/detect"
         payload = {
             "image_base64": image_b64,
