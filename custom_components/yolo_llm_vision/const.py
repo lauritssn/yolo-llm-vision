@@ -20,7 +20,7 @@ CONF_NOTIFY_SERVICE = "notify_service"
 # Defaults
 DEFAULT_SIDECAR_URL = "http://localhost:8000"
 DEFAULT_CONFIDENCE = 0.6
-DEFAULT_DETECTION_CLASSES = ["person", "dog", "car", "truck", "horse", "cow", "bear", "wolf"]
+DEFAULT_DETECTION_CLASSES = ["person", "dog", "car", "truck", "horse", "cow", "bear"]
 DEFAULT_PROMPT = (
     "Describe what you see. Focus on people — what are they doing, "
     "what are they wearing, do they appear to be a threat or acting unusually?"
@@ -41,7 +41,6 @@ DETECTION_CLASS_OPTIONS = [
     "sheep",
     "cow",
     "bear",
-    "wolf",  # not in COCO-80; for custom models only
     "backpack",
     "umbrella",
     "handbag",

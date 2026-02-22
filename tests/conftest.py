@@ -29,7 +29,7 @@ def mock_config_entry_data() -> dict[str, Any]:
         "sidecar_url": "http://sidecar:8000",
         "cameras": ["camera.front_door", "camera.garden"],
         "confidence_threshold": 0.6,
-        "detection_classes": ["person", "dog", "car", "truck", "horse", "cow", "bear", "wolf"],
+        "detection_classes": ["person", "dog", "car", "truck", "horse", "cow", "bear"],
         "draw_boxes": True,
         "save_annotated_image": True,
         "llm_provider": "",

@@ -134,7 +134,6 @@ The sidecar uses standard COCO-80 classes. Configure which ones trigger a detect
 | horse | 17 | yes |
 | cow | 19 | yes |
 | bear | 21 | yes |
-| wolf | — | optional (custom models only; not in COCO) |
 | cat | 15 | no (excluded) |
 | bird | 14 | no (excluded) |
 

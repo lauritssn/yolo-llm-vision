@@ -44,7 +44,7 @@ def test_confidence_threshold(coordinator: YoloLLMVisionCoordinator) -> None:
 
 
 def test_detection_classes(coordinator: YoloLLMVisionCoordinator) -> None:
-    assert coordinator.detection_classes == ["person", "dog", "car", "truck", "horse", "cow", "bear", "wolf"]
+    assert coordinator.detection_classes == ["person", "dog", "car", "truck", "horse", "cow", "bear"]
 
 
 def test_cameras(coordinator: YoloLLMVisionCoordinator) -> None:
@@ -105,7 +105,7 @@ async def test_call_sidecar_sends_correct_payload(
     assert body == {
         "image_base64": "YmFzZTY0",
         "confidence_threshold": 0.6,
-        "classes": ["person", "dog", "car", "truck", "horse", "cow", "bear", "wolf"],
+        "classes": ["person", "dog", "car", "truck", "horse", "cow", "bear"],
         "draw_boxes": True,
     }
 

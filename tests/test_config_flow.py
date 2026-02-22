@@ -52,7 +52,7 @@ def test_schema_validates_correct_input() -> None:
         CONF_SIDECAR_URL: "http://localhost:8000",
         CONF_CAMERAS: ["camera.front_door"],
         "confidence_threshold": 0.6,
-        "detection_classes": ["person", "dog", "car", "truck", "horse", "cow", "bear", "wolf"],
+        "detection_classes": ["person", "dog", "car", "truck", "horse", "cow", "bear"],
         "draw_boxes": True,
         "save_annotated_image": True,
         "notify_service": "",
