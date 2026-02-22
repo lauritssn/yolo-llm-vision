@@ -253,6 +253,31 @@ container itself, not the host. Use the container name or host IP.
 - If your QNAP has an NVIDIA GPU (unlikely for most models), enable GPU in the
   sidecar config
 
+### Debug logging (service returns `error: true`)
+
+To see exactly where the integration fails (e.g. no HTTP request reaching the sidecar), enable debug logging:
+
+1. In `configuration.yaml` add:
+
+```yaml
+logger:
+  default: warning
+  logs:
+    custom_components.yolo_llm_vision: debug
+```
+
+2. Restart Home Assistant.
+3. Call the `yolo_llm_vision.analyze` service again.
+4. Check **Settings > System > Logs** (or your HA log file). You will see:
+   - When the service is called and with what data
+   - The sidecar URL from config/options
+   - Whether a config entry is loaded
+   - Snapshot fetch and size
+   - The exact sidecar URL, HTTP method, and payload size
+   - The raw HTTP response or full exception traceback if the request fails
+
+Use the last debug line before an exception to see where it failed (e.g. fetching snapshot vs. calling the sidecar).
+
 ## Uninstalling
 
 1. Remove the integration from **Settings > Devices & Services**

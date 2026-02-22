@@ -60,7 +60,7 @@ DEFAULT_BOX_COLOR = (0, 200, 255)
 _executor = ThreadPoolExecutor(max_workers=4)
 _model: YOLO | None = None
 
-app = FastAPI(title="YOLO Object Detection Sidecar", version="2.0.2")
+app = FastAPI(title="YOLO Object Detection Sidecar", version="2.0.3")
 
 
 def _load_model() -> YOLO:

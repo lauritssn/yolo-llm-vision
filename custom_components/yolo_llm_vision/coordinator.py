@@ -155,6 +155,12 @@ class YoloLLMVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
         self, entity_id: str, *, force_llm: bool = False
     ) -> dict[str, Any]:
         """Grab a snapshot, run YOLO, optionally call LLM Vision."""
+        _LOGGER.debug(
+            "analyze_camera start: entity_id=%s, force_llm=%s, sidecar_url=%s",
+            entity_id,
+            force_llm,
+            self.sidecar_url,
+        )
         if entity_id in self._analyzing:
             _LOGGER.debug("Already analyzing %s, skipping", entity_id)
             return {}
@@ -164,8 +170,15 @@ class YoloLLMVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
         result: dict[str, Any] = {"entity_id": entity_id}
 
         try:
+            _LOGGER.debug("Fetching camera snapshot for entity_id=%s", entity_id)
             image = await async_get_image(self.hass, entity_id)
             image_b64 = base64.b64encode(image.content).decode("ascii")
+            _LOGGER.debug(
+                "Snapshot received: entity_id=%s, size_bytes=%s, base64_len=%s",
+                entity_id,
+                len(image.content),
+                len(image_b64),
+            )
 
             yolo = await self._call_sidecar(image_b64)
 
@@ -226,7 +239,10 @@ class YoloLLMVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
             return result
 
         except Exception:
-            _LOGGER.exception("Error analyzing camera %s", entity_id)
+            _LOGGER.exception(
+                "Error analyzing camera %s (exception above); returning error: true",
+                entity_id,
+            )
             return {"entity_id": entity_id, "error": True}
         finally:
             self._analyzing.discard(entity_id)
@@ -240,15 +256,51 @@ class YoloLLMVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
 
     async def _call_sidecar(self, image_b64: str) -> dict[str, Any]:
         url = f"{self.sidecar_url.rstrip('/')}/detect"
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(url, json={
-                "image_base64": image_b64,
-                "confidence_threshold": self.confidence_threshold,
-                "classes": self.detection_classes,
-                "draw_boxes": self.draw_boxes,
-            })
-            resp.raise_for_status()
-            return resp.json()
+        payload = {
+            "image_base64": image_b64,
+            "confidence_threshold": self.confidence_threshold,
+            "classes": self.detection_classes,
+            "draw_boxes": self.draw_boxes,
+        }
+        _LOGGER.debug(
+            "Sidecar HTTP request: method=POST, url=%s, payload_keys=%s, image_base64_len=%s, confidence_threshold=%s, classes=%s, draw_boxes=%s",
+            url,
+            list(payload.keys()),
+            len(image_b64),
+            self.confidence_threshold,
+            self.detection_classes,
+            self.draw_boxes,
+        )
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(url, json=payload)
+                _LOGGER.debug(
+                    "Sidecar HTTP response: url=%s, status_code=%s, body_preview=%s",
+                    url,
+                    resp.status_code,
+                    (resp.text[:500] if resp.text else "(empty)"),
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                _LOGGER.debug(
+                    "Sidecar response JSON keys: %s",
+                    list(data.keys()) if isinstance(data, dict) else type(data).__name__,
+                )
+                return data
+        except httpx.HTTPError as e:
+            _LOGGER.exception(
+                "Sidecar HTTP error: url=%s, method=POST, exception=%s",
+                url,
+                type(e).__name__,
+            )
+            raise
+        except Exception as e:
+            _LOGGER.exception(
+                "Sidecar request failed (non-HTTP): url=%s, exception=%s",
+                url,
+                type(e).__name__,
+            )
+            raise
 
     # -- optional LLM Vision --------------------------------------------------
 

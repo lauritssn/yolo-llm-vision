@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import httpx
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
@@ -16,7 +17,7 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN, PLATFORMS
+from .const import CONF_SIDECAR_URL, DEFAULT_SIDECAR_URL, DOMAIN, PLATFORMS
 from .coordinator import YoloLLMVisionCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -53,10 +54,49 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register YOLO + LLM Vision services (once, independent of entries)."""
 
     async def handle_analyze(call: ServiceCall) -> dict[str, Any]:
-        coordinator = _get_coordinator(hass)
+        _LOGGER.debug(
+            "Service yolo_llm_vision.analyze called with data: %s",
+            dict(call.data),
+        )
+        try:
+            coordinator = _get_coordinator(hass)
+        except ServiceValidationError:
+            all_entries = hass.config_entries.async_entries(DOMAIN)
+            _LOGGER.debug(
+                "No loaded config entry: DOMAIN=%s, entries_count=%s, entry_states=%s",
+                DOMAIN,
+                len(all_entries),
+                [(e.entry_id, e.state) for e in all_entries],
+            )
+            _LOGGER.exception("No loaded config entry for YOLO + LLM Vision")
+            raise
+        cfg = {**coordinator.config_entry.data, **coordinator.config_entry.options}
+        sidecar_url = cfg.get(CONF_SIDECAR_URL, DEFAULT_SIDECAR_URL)
+        _LOGGER.debug(
+            "Using sidecar URL from config/options: %s",
+            sidecar_url,
+        )
         entity_id: str = call.data["entity_id"]
         force_llm: bool = call.data.get("force_llm", False)
-        return await coordinator.manual_analyze(entity_id, force_llm=force_llm)
+        _LOGGER.debug(
+            "Calling coordinator.manual_analyze(entity_id=%s, force_llm=%s)",
+            entity_id,
+            force_llm,
+        )
+        result = await coordinator.manual_analyze(entity_id, force_llm=force_llm)
+        if result.get("error"):
+            _LOGGER.debug(
+                "analyze returned error: true for entity_id=%s; full result: %s",
+                entity_id,
+                result,
+            )
+        else:
+            _LOGGER.debug(
+                "analyze succeeded for entity_id=%s; detected=%s",
+                entity_id,
+                result.get("detected"),
+            )
+        return result
 
     hass.services.async_register(
         DOMAIN,
@@ -68,11 +108,52 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
+async def _check_sidecar_health(hass: HomeAssistant, sidecar_url: str) -> bool:
+    """GET sidecar /health and return True if OK."""
+    url = f"{sidecar_url.rstrip('/')}/health"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url)
+            ok = resp.status_code == 200
+            _LOGGER.debug(
+                "Sidecar health check %s: GET %s -> status=%s, body=%s",
+                "passed" if ok else "failed",
+                url,
+                resp.status_code,
+                resp.text[:200] if resp.text else "",
+            )
+            return ok
+    except Exception:
+        _LOGGER.exception(
+            "Sidecar health check failed: GET %s",
+            url,
+        )
+        return False
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: YoloConfigEntry) -> bool:
     """Set up YOLO + LLM Vision from a config entry."""
+    _LOGGER.debug(
+        "async_setup_entry: entry_id=%s, entry.data=%s, entry.options=%s",
+        entry.entry_id,
+        dict(entry.data),
+        dict(entry.options),
+    )
+    cfg = {**entry.data, **entry.options}
+    sidecar_url = cfg.get(CONF_SIDECAR_URL, DEFAULT_SIDECAR_URL)
+    _LOGGER.debug(
+        "Extracted sidecar URL: %s",
+        sidecar_url,
+    )
     coordinator = YoloLLMVisionCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
     coordinator.start_listening()
+
+    health_ok = await _check_sidecar_health(hass, sidecar_url)
+    _LOGGER.debug(
+        "Sidecar health check on startup: %s",
+        "passed" if health_ok else "failed",
+    )
 
     entry.runtime_data = coordinator
 
