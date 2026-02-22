@@ -1,0 +1,5 @@
+# Required at repo root for Supervisor to accept this as an add-on repository.
+# https://developers.home-assistant.io/docs/add-ons/repository
+name: YOLO + LLM Vision Add-ons
+url: "https://github.com/lauritssn/yolo-llm-vision"
+maintainer: "lauritssn"
