@@ -22,8 +22,8 @@ blueprint:
     trigger_type:
       name: Trigger type
       description: >-
-        Choose how the automation is triggered. "Event" fires on a specific
-        HA event name, "Motion sensor" fires on a binary_sensor turning on.
+        Choose how the automation is triggered. "Event" = HA event name(s).
+        "Motion sensor" = one or more binary_sensors. "Both" = use events and motion.
       default: event
       selector:
         select:
@@ -32,25 +32,42 @@ blueprint:
               value: event
             - label: "Motion sensor (binary_sensor)"
               value: motion_sensor
+            - label: "Both (event and motion)"
+              value: both
 
     trigger_event_type:
       name: Trigger event name
       description: >-
-        HA event type to listen for (only used when trigger type is "Event").
-        Leave default if using motion sensor instead.
+        HA event type to listen for (used when trigger type is Event or Both).
+        You can add more in the optional fields below.
       default: ""
       selector:
         text: {}
 
+    trigger_event_type_2:
+      name: Trigger event name 2 (optional)
+      description: Second event type for the same camera. Leave default to disable.
+      default: "yolo_blueprint_unused_2"
+      selector:
+        text: {}
+
+    trigger_event_type_3:
+      name: Trigger event name 3 (optional)
+      description: Third event type for the same camera. Leave default to disable.
+      default: "yolo_blueprint_unused_3"
+      selector:
+        text: {}
+
     trigger_motion_entity:
-      name: Motion sensor entity
+      name: Motion sensor(s)
       description: >-
-        Binary sensor for motion detection (only used when trigger type is
-        "Motion sensor"). Leave default if using event instead.
-      default: ""
+        One or more binary_sensor entities for motion (used when trigger type
+        is Motion sensor or Both). You can select multiple.
+      default: []
       selector:
         entity:
           domain: binary_sensor
+          multiple: true
 
     ai_task_entity:
       name: AI Task entity
@@ -176,13 +193,21 @@ variables:
 triggers:
   - trigger: event
     event_type: !input trigger_event_type
-    id: event_trigger
-    enabled: "{{ trigger_mode == 'event' }}"
+    id: event_trigger_1
+    enabled: "{{ trigger_mode in ['event', 'both'] and (trigger_event_type or '') | length > 0 }}"
+  - trigger: event
+    event_type: !input trigger_event_type_2
+    id: event_trigger_2
+    enabled: "{{ trigger_mode in ['event', 'both'] and trigger_event_type_2 not in ['', 'yolo_blueprint_unused_2'] }}"
+  - trigger: event
+    event_type: !input trigger_event_type_3
+    id: event_trigger_3
+    enabled: "{{ trigger_mode in ['event', 'both'] and trigger_event_type_3 not in ['', 'yolo_blueprint_unused_3'] }}"
   - trigger: state
     entity_id: !input trigger_motion_entity
     to: "on"
     id: motion_trigger
-    enabled: "{{ trigger_mode == 'motion_sensor' }}"
+    enabled: "{{ trigger_mode in ['motion_sensor', 'both'] and (trigger_motion_entity or []) | length > 0 }}"
 
 actions:
   # 1. Take snapshot

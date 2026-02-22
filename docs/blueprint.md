@@ -76,9 +76,11 @@ config/blueprints/automation/yolo_llm_vision/camera_event_pipeline.yaml
 | Input | Required | Default | Description |
 |---|---|---|---|
 | Camera | yes | — | Camera entity to snapshot |
-| Trigger type | yes | event | "Event" or "Motion sensor" |
-| Trigger event name | if event | — | HA event type, e.g. `shed_camera_motion` |
-| Motion sensor entity | if motion | — | Binary sensor entity |
+| Trigger type | yes | event | "Event", "Motion sensor", or "Both" |
+| Trigger event name | if event/both | — | HA event type, e.g. `shed_camera_motion` |
+| Trigger event name 2 (optional) | no | — | Second event type for the same camera |
+| Trigger event name 3 (optional) | no | — | Third event type for the same camera |
+| Motion sensor(s) | if motion/both | — | One or more binary_sensor entities (multiple allowed) |
 | AI Task entity | no | — | e.g. `ai_task.openai_ai_task`. Leave empty to skip AI. |
 | AI Task name | no | "Security Camera Analysis" | Descriptive name for logging |
 | AI instructions | no | (default prompt) | Full prompt for the AI analysis |
@@ -116,6 +118,14 @@ Blueprint equivalent — create an automation from the blueprint with these inpu
 | Send photo with Telegram | true |
 
 The difference: between the snapshot and the AI call, YOLO now checks whether a person, dog, or other configured object is actually in the frame. If the frame is empty (or only shows cats/birds), the AI call is skipped entirely.
+
+## Multiple triggers for the same camera
+
+You can trigger one automation from several sources for the same camera:
+
+- **Multiple event types:** Fill in "Trigger event name" and optionally "Trigger event name 2" and "Trigger event name 3". Any of these events will run the pipeline for the selected camera.
+- **Multiple motion sensors:** In "Motion sensor(s)" select more than one binary_sensor. Motion on any of them will trigger the pipeline.
+- **Events and motion:** Set "Trigger type" to **Both**, then set at least one event name and/or at least one motion sensor. Any of these triggers will run the pipeline.
 
 ## Three Operating Modes
 
