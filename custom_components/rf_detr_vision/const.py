@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from homeassistant.const import Platform
 
-DOMAIN = "yolo_llm_vision"
+DOMAIN = "rf_detr_vision"
 
 # Config keys — sidecar & detection
 CONF_SIDECAR_URL = "sidecar_url"
@@ -77,7 +77,7 @@ DETECTION_CLASS_OPTIONS = [
     "suitcase",
 ]
 
-EVENT_DETECTION = "yolo_llm_vision_detection"
+EVENT_DETECTION = "rf_detr_vision_detection"
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,

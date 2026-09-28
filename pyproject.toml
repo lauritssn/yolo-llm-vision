@@ -1,6 +1,6 @@
 [project]
-name = "yolo-llm-vision"
-version = "2.0.6"
+name = "rf-detr-vision"
+version = "3.0.0"
 requires-python = ">=3.13.2"
 description = "RF-DETR + LLM Vision HACS integration for Home Assistant"
 readme = "README.md"

@@ -29,7 +29,7 @@ On HAOS, the sidecar runs as a **Home Assistant add-on**.
 
 1. Go to **Settings > Add-ons > Add-on Store**
 2. Click the three-dot menu (top right) > **Repositories**
-3. Add: `https://github.com/lauritssn/yolo-llm-vision`
+3. Add: `https://github.com/lauritssn/rf-detr-vision`
 4. Click **Add** then **Close**
 5. Find **RF-DETR Segmentation** in the store and click **Install**
 6. **Important:** The first build can take **5–15 minutes** (image build and model download). Do not cancel.
@@ -45,8 +45,8 @@ On HAOS, the sidecar runs as a **Home Assistant add-on**.
 #### Option B: Local Add-on (No GitHub Needed)
 
 1. Access your HAOS config directory via Samba, SSH, or the File Editor add-on
-2. Create the folder: `addons/yolo_sidecar/`
-3. Copy everything from this repo's `addon/yolo_sidecar/` into that folder
+2. Create the folder: `addons/rf_detr_sidecar/`
+3. Copy everything from this repo's `addon/rf_detr_sidecar/` into that folder
 4. Go to **Settings > Add-ons > Add-on Store**
 5. Click the three-dot menu > **Check for updates**
 6. Find **RF-DETR Segmentation** under **Local add-ons** and install it
@@ -58,8 +58,8 @@ When configuring the integration, use one of these URLs:
 
 | URL to try | When to use |
 |---|---|
-| `http://local-yolo-sidecar:8000` | Internal Docker hostname (try first) |
-| `http://addon_local_yolo_sidecar:8000` | Alternative internal hostname |
+| `http://local-rf-detr-sidecar:8000` | Internal Docker hostname (try first) |
+| `http://addon_local_rf_detr_sidecar:8000` | Alternative internal hostname |
 | `http://<your-HAOS-IP>:8000` | Fallback — uses the exposed port |
 
 Verify: open `http://<sidecar-host>:8000/health` — you should see `"status":"ok"` and `"engine":"rf-detr-seg"`.
@@ -76,13 +76,13 @@ docker compose up -d
 
 See [sidecar.md](sidecar.md) for API details and environment variables.
 
-**Sidecar URL from HA:** use the Docker service name (e.g. `http://yolo-sidecar:8000`) or the host IP — not `localhost` from inside the HA container.
+**Sidecar URL from HA:** use the Docker service name (e.g. `http://rf-detr-sidecar:8000`) or the host IP — not `localhost` from inside the HA container.
 
 ## Step 2: Install the Integration (HACS)
 
 1. Go to **HACS > Integrations**
 2. Open the three-dot menu (⋮) → **Custom repositories**
-3. **Repository:** `https://github.com/lauritssn/yolo-llm-vision`
+3. **Repository:** `https://github.com/lauritssn/rf-detr-vision`
 4. **Type:** **Integration** → **Add**
 5. Go to **HACS > Integrations** → **Explore & Download** → search **RF-DETR + LLM Vision** → **Download**
 6. **Restart Home Assistant**
@@ -90,7 +90,7 @@ See [sidecar.md](sidecar.md) for API details and environment variables.
 
 ### Manual install (no HACS)
 
-Copy `custom_components/yolo_llm_vision/` to your HA `config/custom_components/` folder and restart.
+Copy `custom_components/rf_detr_vision/` to your HA `config/custom_components/` folder and restart.
 
 ## Step 3: Configure the Integration
 
@@ -110,7 +110,7 @@ Adding the integration opens a **four-step wizard**. You can reopen **Configure*
 | Confidence threshold | 0.6 is a good starting point |
 | Detection classes | person, dog, car, truck, etc. |
 | Draw overlays | Light-green segmentation masks on snapshots |
-| Save annotated images | Saves to `/config/media/yolo_llm_vision/` |
+| Save annotated images | Saves to `/config/media/rf_detr_vision/` |
 
 ### AI threat analysis
 
@@ -142,7 +142,7 @@ Use the blueprint only if you want the same pipeline inside a **custom automatio
 2. Click **Import Blueprint**
 3. Paste:
    ```
-   https://github.com/lauritssn/yolo-llm-vision/blob/main/blueprints/automation/yolo_llm_vision/camera_event_pipeline.yaml
+   https://github.com/lauritssn/rf-detr-vision/blob/main/blueprints/automation/rf_detr_vision/camera_event_pipeline.yaml
    ```
 
 See [blueprint.md](blueprint.md) for blueprint inputs.
@@ -162,7 +162,7 @@ See [blueprint.md](blueprint.md) for blueprint inputs.
 ### Developer Tools
 
 1. Go to **Developer Tools > Services**
-2. Select `yolo_llm_vision.analyze`
+2. Select `rf_detr_vision.analyze`
 3. Enter a camera entity ID
 4. Click **Call Service**
 5. Check the response for `detected`, `ai_analysis`, and `threat_detected`
@@ -207,10 +207,10 @@ On Docker HA, `localhost` inside the HA container is not the host — use the si
 logger:
   default: warning
   logs:
-    custom_components.yolo_llm_vision: debug
+    custom_components.rf_detr_vision: debug
 ```
 
-Restart HA, call `yolo_llm_vision.analyze`, then check **Settings > System > Logs**.
+Restart HA, call `rf_detr_vision.analyze`, then check **Settings > System > Logs**.
 
 ## Uninstalling
 

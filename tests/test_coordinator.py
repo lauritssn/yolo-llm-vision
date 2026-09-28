@@ -1,4 +1,4 @@
-"""Tests for YoloLLMVisionCoordinator config and analyze_camera with mocks."""
+"""Tests for RfDetrVisionCoordinator config and analyze_camera with mocks."""
 
 from __future__ import annotations
 
@@ -13,20 +13,20 @@ from homeassistant.components.camera import Image
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from custom_components.yolo_llm_vision.const import EVENT_DETECTION
-from custom_components.yolo_llm_vision.coordinator import (
+from custom_components.rf_detr_vision.const import EVENT_DETECTION
+from custom_components.rf_detr_vision.coordinator import (
     CameraState,
-    YoloLLMVisionCoordinator,
+    RfDetrVisionCoordinator,
 )
 
 
 @pytest.fixture
-def coordinator(mock_hass: MagicMock, mock_config_entry: MagicMock) -> YoloLLMVisionCoordinator:
+def coordinator(mock_hass: MagicMock, mock_config_entry: MagicMock) -> RfDetrVisionCoordinator:
     """Real coordinator with mock hass and entry."""
-    return YoloLLMVisionCoordinator(mock_hass, mock_config_entry)
+    return RfDetrVisionCoordinator(mock_hass, mock_config_entry)
 
 
-def test_sidecar_url_from_config(coordinator: YoloLLMVisionCoordinator) -> None:
+def test_sidecar_url_from_config(coordinator: RfDetrVisionCoordinator) -> None:
     assert coordinator.sidecar_url == "http://sidecar:8000"
 
 
@@ -35,31 +35,31 @@ def test_sidecar_url_from_options(
 ) -> None:
     mock_config_entry.options = {"sidecar_url": "http://other:9000"}
     mock_config_entry.data = {"sidecar_url": "http://sidecar:8000", "cameras": []}
-    coord = YoloLLMVisionCoordinator(mock_hass, mock_config_entry)
+    coord = RfDetrVisionCoordinator(mock_hass, mock_config_entry)
     assert coord.sidecar_url == "http://other:9000"
 
 
-def test_confidence_threshold(coordinator: YoloLLMVisionCoordinator) -> None:
+def test_confidence_threshold(coordinator: RfDetrVisionCoordinator) -> None:
     assert coordinator.confidence_threshold == 0.6
 
 
-def test_detection_classes(coordinator: YoloLLMVisionCoordinator) -> None:
+def test_detection_classes(coordinator: RfDetrVisionCoordinator) -> None:
     assert coordinator.detection_classes == ["person", "dog", "car", "truck", "horse", "cow", "bear"]
 
 
-def test_cameras(coordinator: YoloLLMVisionCoordinator) -> None:
+def test_cameras(coordinator: RfDetrVisionCoordinator) -> None:
     assert coordinator.cameras == ["camera.front_door", "camera.garden"]
 
 
-def test_draw_boxes(coordinator: YoloLLMVisionCoordinator) -> None:
+def test_draw_boxes(coordinator: RfDetrVisionCoordinator) -> None:
     assert coordinator.draw_boxes is True
 
 
-def test_save_annotated(coordinator: YoloLLMVisionCoordinator) -> None:
+def test_save_annotated(coordinator: RfDetrVisionCoordinator) -> None:
     assert coordinator.save_annotated is True
 
 
-def test_llm_enabled_false_when_empty(coordinator: YoloLLMVisionCoordinator) -> None:
+def test_llm_enabled_false_when_empty(coordinator: RfDetrVisionCoordinator) -> None:
     assert coordinator.llm_enabled is False
 
 
@@ -71,11 +71,11 @@ def test_llm_enabled_true_when_provider_set(
         "cameras": [],
         "llm_provider": "llmvision.provider",
     }
-    coord = YoloLLMVisionCoordinator(mock_hass, mock_config_entry)
+    coord = RfDetrVisionCoordinator(mock_hass, mock_config_entry)
     assert coord.llm_enabled is True
 
 
-def test_get_camera_state_creates_new(coordinator: YoloLLMVisionCoordinator) -> None:
+def test_get_camera_state_creates_new(coordinator: RfDetrVisionCoordinator) -> None:
     s1 = coordinator.get_camera_state("camera.test")
     assert isinstance(s1, CameraState)
     s2 = coordinator.get_camera_state("camera.test")
@@ -85,7 +85,7 @@ def test_get_camera_state_creates_new(coordinator: YoloLLMVisionCoordinator) -> 
 @respx.mock
 @pytest.mark.asyncio
 async def test_call_sidecar_sends_correct_payload(
-    coordinator: YoloLLMVisionCoordinator,
+    coordinator: RfDetrVisionCoordinator,
 ) -> None:
     route = respx.post("http://sidecar:8000/detect").mock(
         return_value=httpx.Response(
@@ -113,7 +113,7 @@ async def test_call_sidecar_sends_correct_payload(
 @respx.mock
 @pytest.mark.asyncio
 async def test_analyze_camera_detection_true_sets_state_and_fires_event(
-    coordinator: YoloLLMVisionCoordinator,
+    coordinator: RfDetrVisionCoordinator,
     mock_hass: MagicMock,
 ) -> None:
     respx.post("http://sidecar:8000/detect").mock(
@@ -132,7 +132,7 @@ async def test_analyze_camera_detection_true_sets_state_and_fires_event(
     )
     fake_image = Image(content_type="image/jpeg", content=b"fake_jpeg_bytes")
     with patch(
-        "custom_components.yolo_llm_vision.coordinator.async_get_image",
+        "custom_components.rf_detr_vision.coordinator.async_get_image",
         AsyncMock(return_value=fake_image),
     ):
         result = await coordinator.analyze_camera("camera.front_door")
@@ -155,7 +155,7 @@ async def test_analyze_camera_detection_true_sets_state_and_fires_event(
 @respx.mock
 @pytest.mark.asyncio
 async def test_analyze_camera_below_threshold_sets_detected_false(
-    coordinator: YoloLLMVisionCoordinator,
+    coordinator: RfDetrVisionCoordinator,
     mock_hass: MagicMock,
 ) -> None:
     respx.post("http://sidecar:8000/detect").mock(
@@ -172,7 +172,7 @@ async def test_analyze_camera_below_threshold_sets_detected_false(
     )
     fake_image = Image(content_type="image/jpeg", content=b"fake_jpeg_bytes")
     with patch(
-        "custom_components.yolo_llm_vision.coordinator.async_get_image",
+        "custom_components.rf_detr_vision.coordinator.async_get_image",
         AsyncMock(return_value=fake_image),
     ):
         result = await coordinator.analyze_camera("camera.front_door")
@@ -186,7 +186,7 @@ async def test_analyze_camera_below_threshold_sets_detected_false(
 @respx.mock
 @pytest.mark.asyncio
 async def test_analyze_camera_concurrent_returns_empty(
-    coordinator: YoloLLMVisionCoordinator,
+    coordinator: RfDetrVisionCoordinator,
 ) -> None:
     slow_response = asyncio.Event()
 
@@ -206,7 +206,7 @@ async def test_analyze_camera_concurrent_returns_empty(
     respx.post("http://sidecar:8000/detect").mock(side_effect=slow_post)
     fake_image = Image(content_type="image/jpeg", content=b"fake_jpeg_bytes")
     with patch(
-        "custom_components.yolo_llm_vision.coordinator.async_get_image",
+        "custom_components.rf_detr_vision.coordinator.async_get_image",
         AsyncMock(return_value=fake_image),
     ):
         task1 = asyncio.create_task(coordinator.analyze_camera("camera.front_door"))
@@ -221,11 +221,11 @@ async def test_analyze_camera_concurrent_returns_empty(
 @respx.mock
 @pytest.mark.asyncio
 async def test_analyze_camera_on_exception_returns_error_and_message(
-    coordinator: YoloLLMVisionCoordinator,
+    coordinator: RfDetrVisionCoordinator,
 ) -> None:
     """When analyze_camera raises, result includes entity_id, error=True, and message."""
     with patch(
-        "custom_components.yolo_llm_vision.coordinator.async_get_image",
+        "custom_components.rf_detr_vision.coordinator.async_get_image",
         AsyncMock(side_effect=OSError("Connection refused")),
     ):
         result = await coordinator.analyze_camera("camera.front_door")
@@ -239,7 +239,7 @@ async def test_analyze_camera_on_exception_returns_error_and_message(
 @respx.mock
 @pytest.mark.asyncio
 async def test_analyze_camera_sidecar_4xx_returns_error_and_message(
-    coordinator: YoloLLMVisionCoordinator,
+    coordinator: RfDetrVisionCoordinator,
 ) -> None:
     """When sidecar returns 4xx/5xx, result includes error and message with detail."""
     respx.post("http://sidecar:8000/detect").mock(
@@ -250,7 +250,7 @@ async def test_analyze_camera_sidecar_4xx_returns_error_and_message(
     )
     fake_image = Image(content_type="image/jpeg", content=b"fake_jpeg_bytes")
     with patch(
-        "custom_components.yolo_llm_vision.coordinator.async_get_image",
+        "custom_components.rf_detr_vision.coordinator.async_get_image",
         AsyncMock(return_value=fake_image),
     ):
         result = await coordinator.analyze_camera("camera.front_door")
@@ -262,7 +262,7 @@ async def test_analyze_camera_sidecar_4xx_returns_error_and_message(
     assert "Failed to fetch image" in result["message"]
 
 
-def test_ai_task_enabled_false_when_empty(coordinator: YoloLLMVisionCoordinator) -> None:
+def test_ai_task_enabled_false_when_empty(coordinator: RfDetrVisionCoordinator) -> None:
     assert coordinator.ai_task_enabled is False
 
 
@@ -274,7 +274,7 @@ def test_ai_task_enabled_true_when_entity_set(
         "cameras": [],
         "ai_task_entity": "ai_task.openai_ai_task",
     }
-    coord = YoloLLMVisionCoordinator(mock_hass, mock_config_entry)
+    coord = RfDetrVisionCoordinator(mock_hass, mock_config_entry)
     assert coord.ai_task_enabled is True
     assert coord.ai_analysis_enabled is True
 
@@ -294,7 +294,7 @@ async def test_analyze_camera_with_ai_task_threat_detected(
         "notify_on_threat": True,
         "notify_on_all_clear": False,
     }
-    coordinator = YoloLLMVisionCoordinator(mock_hass, mock_config_entry)
+    coordinator = RfDetrVisionCoordinator(mock_hass, mock_config_entry)
 
     respx.post("http://sidecar:8000/detect").mock(
         return_value=httpx.Response(
@@ -314,7 +314,7 @@ async def test_analyze_camera_with_ai_task_threat_detected(
     )
 
     with patch(
-        "custom_components.yolo_llm_vision.coordinator.async_get_image",
+        "custom_components.rf_detr_vision.coordinator.async_get_image",
         AsyncMock(return_value=fake_image),
     ):
         result = await coordinator.analyze_camera("camera.front_door")
@@ -341,7 +341,7 @@ async def test_analyze_camera_with_ai_task_all_clear(
         "notify_on_all_clear": True,
         "all_clear_notification_title": "All Clear",
     }
-    coordinator = YoloLLMVisionCoordinator(mock_hass, mock_config_entry)
+    coordinator = RfDetrVisionCoordinator(mock_hass, mock_config_entry)
 
     respx.post("http://sidecar:8000/detect").mock(
         return_value=httpx.Response(
@@ -361,7 +361,7 @@ async def test_analyze_camera_with_ai_task_all_clear(
     )
 
     with patch(
-        "custom_components.yolo_llm_vision.coordinator.async_get_image",
+        "custom_components.rf_detr_vision.coordinator.async_get_image",
         AsyncMock(return_value=fake_image),
     ):
         result = await coordinator.analyze_camera("camera.front_door")

@@ -1,12 +1,12 @@
 name: RF-DETR Segmentation
-version: "2.2.0"
-slug: yolo_sidecar
+version: "3.0.0"
+slug: rf_detr_sidecar
 description: >-
   Local RF-DETR instance segmentation sidecar for the RF-DETR + LLM Vision integration.
   Detects people, animals, vehicles, and other objects in camera images.
   Runs entirely locally — no cloud API costs.
   Installation and first start may take several minutes (image build and model download).
-url: "https://github.com/lauritssn/yolo-llm-vision"
+url: "https://github.com/lauritssn/rf-detr-vision"
 startup: application
 boot: auto
 host_network: false

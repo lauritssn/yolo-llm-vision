@@ -7,14 +7,14 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import YoloConfigEntry
+from . import RfDetrConfigEntry
 from .const import CONF_CAMERAS, DOMAIN
-from .coordinator import CameraState, YoloLLMVisionCoordinator
+from .coordinator import CameraState, RfDetrVisionCoordinator
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: YoloConfigEntry,
+    entry: RfDetrConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
@@ -22,21 +22,21 @@ async def async_setup_entry(
     entities: list[SensorEntity] = []
     for cam_id in cameras:
         entities.extend([
-            YoloConfidenceSensor(coordinator, cam_id),
-            YoloDetectionCountSensor(coordinator, cam_id),
-            YoloClassesSensor(coordinator, cam_id),
-            YoloLastDetectedSensor(coordinator, cam_id),
+            RfDetrConfidenceSensor(coordinator, cam_id),
+            RfDetrDetectionCountSensor(coordinator, cam_id),
+            RfDetrClassesSensor(coordinator, cam_id),
+            RfDetrLastDetectedSensor(coordinator, cam_id),
         ])
         if coordinator.llm_enabled:
-            entities.append(YoloLLMSummarySensor(coordinator, cam_id))
+            entities.append(RfDetrAiSummarySensor(coordinator, cam_id))
     async_add_entities(entities)
 
 
-class _YoloSensorBase(CoordinatorEntity[YoloLLMVisionCoordinator], SensorEntity):
+class _RfDetrSensorBase(CoordinatorEntity[RfDetrVisionCoordinator], SensorEntity):
     _attr_has_entity_name = True
 
     def __init__(
-        self, coordinator: YoloLLMVisionCoordinator, camera_entity_id: str
+        self, coordinator: RfDetrVisionCoordinator, camera_entity_id: str
     ) -> None:
         super().__init__(coordinator)
         self._camera = camera_entity_id
@@ -50,11 +50,11 @@ class _YoloSensorBase(CoordinatorEntity[YoloLLMVisionCoordinator], SensorEntity)
         self.async_write_ha_state()
 
 
-class YoloConfidenceSensor(_YoloSensorBase):
+class RfDetrConfidenceSensor(_RfDetrSensorBase):
     _attr_icon = "mdi:gauge"
     _attr_native_unit_of_measurement = "%"
 
-    def __init__(self, coordinator: YoloLLMVisionCoordinator, cam: str) -> None:
+    def __init__(self, coordinator: RfDetrVisionCoordinator, cam: str) -> None:
         super().__init__(coordinator, cam)
         safe = cam.replace(".", "_")
         self._attr_unique_id = f"{DOMAIN}_{safe}_confidence"
@@ -65,10 +65,10 @@ class YoloConfidenceSensor(_YoloSensorBase):
         return round(self._cam_state.confidence * 100, 1)
 
 
-class YoloDetectionCountSensor(_YoloSensorBase):
+class RfDetrDetectionCountSensor(_RfDetrSensorBase):
     _attr_icon = "mdi:counter"
 
-    def __init__(self, coordinator: YoloLLMVisionCoordinator, cam: str) -> None:
+    def __init__(self, coordinator: RfDetrVisionCoordinator, cam: str) -> None:
         super().__init__(coordinator, cam)
         safe = cam.replace(".", "_")
         self._attr_unique_id = f"{DOMAIN}_{safe}_detection_count"
@@ -79,12 +79,12 @@ class YoloDetectionCountSensor(_YoloSensorBase):
         return self._cam_state.detection_count
 
 
-class YoloClassesSensor(_YoloSensorBase):
+class RfDetrClassesSensor(_RfDetrSensorBase):
     """Comma-separated list of detected class names."""
 
     _attr_icon = "mdi:tag-multiple"
 
-    def __init__(self, coordinator: YoloLLMVisionCoordinator, cam: str) -> None:
+    def __init__(self, coordinator: RfDetrVisionCoordinator, cam: str) -> None:
         super().__init__(coordinator, cam)
         safe = cam.replace(".", "_")
         self._attr_unique_id = f"{DOMAIN}_{safe}_classes"
@@ -96,10 +96,10 @@ class YoloClassesSensor(_YoloSensorBase):
         return ", ".join(classes) if classes else "none"
 
 
-class YoloLastDetectedSensor(_YoloSensorBase):
+class RfDetrLastDetectedSensor(_RfDetrSensorBase):
     _attr_icon = "mdi:clock-outline"
 
-    def __init__(self, coordinator: YoloLLMVisionCoordinator, cam: str) -> None:
+    def __init__(self, coordinator: RfDetrVisionCoordinator, cam: str) -> None:
         super().__init__(coordinator, cam)
         safe = cam.replace(".", "_")
         self._attr_unique_id = f"{DOMAIN}_{safe}_last_detected"
@@ -111,10 +111,10 @@ class YoloLastDetectedSensor(_YoloSensorBase):
         return ts.isoformat() if ts else None
 
 
-class YoloLLMSummarySensor(_YoloSensorBase):
+class RfDetrAiSummarySensor(_RfDetrSensorBase):
     _attr_icon = "mdi:text"
 
-    def __init__(self, coordinator: YoloLLMVisionCoordinator, cam: str) -> None:
+    def __init__(self, coordinator: RfDetrVisionCoordinator, cam: str) -> None:
         super().__init__(coordinator, cam)
         safe = cam.replace(".", "_")
         self._attr_unique_id = f"{DOMAIN}_{safe}_llm_summary"

@@ -210,7 +210,7 @@ def _build_schema(
     return vol.Schema({**sidecar, **cameras, **ai, **notifications})
 
 
-class YoloLLMVisionConfigFlow(ConfigFlow, domain=DOMAIN):
+class RfDetrVisionConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for RF-DETR + LLM Vision."""
 
     VERSION = 2
@@ -278,10 +278,10 @@ class YoloLLMVisionConfigFlow(ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
-        return YoloLLMVisionOptionsFlow()
+        return RfDetrVisionOptionsFlow()
 
 
-class YoloLLMVisionOptionsFlow(OptionsFlow):
+class RfDetrVisionOptionsFlow(OptionsFlow):
     """Handle an options flow for RF-DETR + LLM Vision."""
 
     def __init__(self) -> None:

@@ -74,13 +74,13 @@ def mock_hass() -> MagicMock:
 
 @pytest.fixture
 def mock_coordinator(mock_hass: MagicMock, mock_config_entry: MagicMock) -> MagicMock:
-    """Mock YoloLLMVisionCoordinator with config entry and hass."""
-    from custom_components.yolo_llm_vision.coordinator import (
+    """Mock RfDetrVisionCoordinator with config entry and hass."""
+    from custom_components.rf_detr_vision.coordinator import (
         CameraState,
-        YoloLLMVisionCoordinator,
+        RfDetrVisionCoordinator,
     )
 
-    coordinator = YoloLLMVisionCoordinator(mock_hass, mock_config_entry)
+    coordinator = RfDetrVisionCoordinator(mock_hass, mock_config_entry)
     mock_config_entry.runtime_data = coordinator
     return coordinator
 
@@ -88,5 +88,5 @@ def mock_coordinator(mock_hass: MagicMock, mock_config_entry: MagicMock) -> Magi
 @pytest.fixture
 def camera_state() -> type:
     """CameraState class for building test state."""
-    from custom_components.yolo_llm_vision.coordinator import CameraState
+    from custom_components.rf_detr_vision.coordinator import CameraState
     return CameraState

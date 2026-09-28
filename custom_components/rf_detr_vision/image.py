@@ -10,25 +10,25 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import YoloConfigEntry
+from . import RfDetrConfigEntry
 from .const import CONF_CAMERAS, DOMAIN
-from .coordinator import YoloLLMVisionCoordinator
+from .coordinator import RfDetrVisionCoordinator
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: YoloConfigEntry,
+    entry: RfDetrConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
     cameras: list[str] = entry.data.get(CONF_CAMERAS, [])
     async_add_entities(
-        [YoloAnnotatedImage(coordinator, cam_id) for cam_id in cameras]
+        [RfDetrAnnotatedImage(coordinator, cam_id) for cam_id in cameras]
     )
 
 
-class YoloAnnotatedImage(
-    CoordinatorEntity[YoloLLMVisionCoordinator], ImageEntity
+class RfDetrAnnotatedImage(
+    CoordinatorEntity[RfDetrVisionCoordinator], ImageEntity
 ):
     """Image entity serving the last RF-DETR annotated snapshot."""
 
@@ -37,7 +37,7 @@ class YoloAnnotatedImage(
 
     def __init__(
         self,
-        coordinator: YoloLLMVisionCoordinator,
+        coordinator: RfDetrVisionCoordinator,
         camera_entity_id: str,
     ) -> None:
         CoordinatorEntity.__init__(self, coordinator)

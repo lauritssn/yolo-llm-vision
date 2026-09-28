@@ -2,8 +2,6 @@
 
 Local object detection for Home Assistant cameras using a [Roboflow RF-DETR](https://github.com/roboflow/rf-detr) sidecar. Detects people, animals, vehicles and more — only calls expensive AI analysis when something relevant is actually there.
 
-> **Note:** The Home Assistant domain remains `yolo_llm_vision` for compatibility (entity IDs, services, and automations are unchanged).
-
 ## How It Works
 
 ```
@@ -40,7 +38,7 @@ Camera Motion
 **Home Assistant OS** (QNAP VM, Raspberry Pi, etc.) — install as an add-on:
 
 1. **Settings > Add-ons > Add-on Store** > three-dot menu (⋮) > **Repositories**
-2. Add repository URL: `https://github.com/lauritssn/yolo-llm-vision` → **Add** → **Close**
+2. Add repository URL: `https://github.com/lauritssn/rf-detr-vision` → **Add** → **Close**
 3. In the Add-on Store, find **RF-DETR Segmentation** → **Install**
 4. Open the add-on → **Start**
 
@@ -60,7 +58,7 @@ See [docs/setup.md](docs/setup.md) for full details on both methods.
 
 1. Go to **HACS > Integrations**
 2. Open the three-dot menu (⋮) → **Custom repositories**
-3. **Repository:** `https://github.com/lauritssn/yolo-llm-vision`
+3. **Repository:** `https://github.com/lauritssn/rf-detr-vision`
 4. **Type:** **Integration**
 5. Click **Add**
 6. In HACS, go to **Integrations** → **Explore & Download** (or **+**), search for **RF-DETR + LLM Vision** → **Download**
@@ -85,7 +83,7 @@ Go to **Settings > Devices & Services > Add Integration > RF-DETR + LLM Vision**
 | Confidence threshold | Minimum confidence to trigger (default: 0.6) |
 | Detection classes | COCO classes that pass the gate (person, dog, car, …) |
 | Draw overlays | Segmentation masks on saved snapshots |
-| Save annotated images | Write snapshots to `/config/media/yolo_llm_vision/` |
+| Save annotated images | Write snapshots to `/config/media/rf_detr_vision/` |
 
 **AI threat analysis**
 
@@ -116,10 +114,10 @@ If you use the integration configuration above, you do not need the blueprint. U
 Go to **Settings → Automations → Blueprints → Import Blueprint** and paste:
 
 ```
-https://github.com/lauritssn/yolo-llm-vision/blob/main/blueprints/automation/yolo_llm_vision/camera_event_pipeline.yaml
+https://github.com/lauritssn/rf-detr-vision/blob/main/blueprints/automation/rf_detr_vision/camera_event_pipeline.yaml
 ```
 
-Or copy the file to `config/blueprints/automation/yolo_llm_vision/`.
+Or copy the file to `config/blueprints/automation/rf_detr_vision/`.
 
 ## Blueprint: Camera Security Pipeline
 
@@ -179,20 +177,20 @@ For each configured camera:
 
 | Entity | Type | Description |
 |---|---|---|
-| `binary_sensor.yolo_detection_*` | Binary Sensor | On when RF-DETR detects a configured class |
-| `sensor.yolo_confidence_*` | Sensor | Highest detection confidence (%) |
-| `sensor.yolo_detection_count_*` | Sensor | Number of detections |
-| `sensor.yolo_classes_*` | Sensor | Comma-separated detected class names |
-| `sensor.yolo_last_detected_*` | Sensor | Timestamp of last detection |
-| `sensor.yolo_llm_summary_*` | Sensor | LLM analysis text (only if LLM configured) |
-| `image.yolo_annotated_*` | Image | Last annotated snapshot with segmentation overlays |
+| `binary_sensor.rf_detr_vision_*_detected` | Binary Sensor | On when RF-DETR detects a configured class |
+| `sensor.rf_detr_vision_*_confidence` | Sensor | Highest detection confidence (%) |
+| `sensor.rf_detr_vision_*_detection_count` | Sensor | Number of detections |
+| `sensor.rf_detr_vision_*_classes` | Sensor | Comma-separated detected class names |
+| `sensor.rf_detr_vision_*_last_detected` | Sensor | Timestamp of last detection |
+| `sensor.rf_detr_vision_*_llm_summary` | Sensor | AI analysis text (when AI Task / LLM enabled) |
+| `image.rf_detr_vision_*_annotated` | Image | Last annotated snapshot with segmentation overlays |
 
-## Service: yolo_llm_vision.analyze
+## Service: rf_detr_vision.analyze
 
 Call manually or from automations:
 
 ```yaml
-action: yolo_llm_vision.analyze
+action: rf_detr_vision.analyze
 data:
   entity_id: camera.front_door
   force_llm: false
@@ -216,10 +214,10 @@ llm_summary: "Person walking a dog. THREAT DETECTED"  # same text as ai_analysis
 
 ## Events
 
-When a detection occurs, the integration fires `yolo_llm_vision_detection`:
+When a detection occurs, the integration fires `rf_detr_vision_detection`:
 
 ```yaml
-event_type: yolo_llm_vision_detection
+event_type: rf_detr_vision_detection
 data:
   entity_id: camera.front_door
   detected: true
@@ -228,6 +226,25 @@ data:
   classes_detected: ["person", "dog"]
   last_seen: "2026-02-22T15:30:00+00:00"
 ```
+
+## Upgrading from v2 (YOLO-named integration)
+
+Version **3.0.0** renames everything to match RF-DETR:
+
+| v2 (remove) | v3 (use) |
+|---|---|
+| Domain `yolo_llm_vision` | `rf_detr_vision` |
+| Service `yolo_llm_vision.analyze` | `rf_detr_vision.analyze` |
+| Add-on slug `yolo_sidecar` | `rf_detr_sidecar` |
+| Sidecar URL `http://local-yolo-sidecar:8000` | `http://local-rf-detr-sidecar:8000` |
+| HACS custom repo `…/yolo-llm-vision` | `…/rf-detr-vision` |
+
+1. Remove the old **YOLO + LLM Vision** integration from HA.
+2. Uninstall the old **YOLO** add-on (if used).
+3. Update your HACS custom repository URL to `https://github.com/lauritssn/rf-detr-vision`.
+4. Install **RF-DETR + LLM Vision** and the **RF-DETR Segmentation** add-on.
+5. Reconfigure cameras, AI Task, and notifications.
+6. Update automations: service `rf_detr_vision.analyze`, event `rf_detr_vision_detection`.
 
 ## FAQ
 

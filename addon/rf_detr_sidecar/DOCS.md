@@ -2,9 +2,9 @@
 
 This add-on runs a local [Roboflow RF-DETR](https://github.com/roboflow/rf-detr) instance segmentation server. The **RF-DETR + LLM Vision** HACS integration sends camera snapshots here for local detection before optional AI threat analysis.
 
-**Install from the Add-on Store:** **Settings > Add-ons > Add-on Store** → ⋮ → **Repositories** → add `https://github.com/lauritssn/yolo-llm-vision` → install **RF-DETR Segmentation**.
+**Install from the Add-on Store:** **Settings > Add-ons > Add-on Store** → ⋮ → **Repositories** → add `https://github.com/lauritssn/rf-detr-vision` → install **RF-DETR Segmentation**.
 
-Full steps: [README](https://github.com/lauritssn/yolo-llm-vision#quick-start) and [docs/setup.md](https://github.com/lauritssn/yolo-llm-vision/blob/main/docs/setup.md).
+Full steps: [README](https://github.com/lauritssn/rf-detr-vision#quick-start) and [docs/setup.md](https://github.com/lauritssn/rf-detr-vision/blob/main/docs/setup.md).
 
 ## Installation time
 
@@ -50,8 +50,8 @@ After starting this add-on:
 3. Sidecar URL — try in order:
 
 ```
-http://local-yolo-sidecar:8000
-http://addon_local_yolo_sidecar:8000
+http://local-rf-detr-sidecar:8000
+http://addon_local_rf_detr_sidecar:8000
 http://<your-haos-ip>:8000
 ```
 
@@ -70,7 +70,7 @@ Or open `http://<ha-ip>:8000/health` and `http://<ha-ip>:8000/try`.
 ## Building locally
 
 ```bash
-cd addon/yolo_sidecar
+cd addon/rf_detr_sidecar
 docker build -t rf-detr-sidecar:local .
 docker run --rm -p 8000:8000 rf-detr-sidecar:local
 ```

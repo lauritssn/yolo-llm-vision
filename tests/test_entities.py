@@ -7,22 +7,22 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from custom_components.yolo_llm_vision.binary_sensor import YoloDetectionBinarySensor
-from custom_components.yolo_llm_vision.coordinator import CameraState, YoloLLMVisionCoordinator
-from custom_components.yolo_llm_vision.sensor import (
-    YoloClassesSensor,
-    YoloConfidenceSensor,
-    YoloDetectionCountSensor,
-    YoloLastDetectedSensor,
+from custom_components.rf_detr_vision.binary_sensor import RfDetrDetectionBinarySensor
+from custom_components.rf_detr_vision.coordinator import CameraState, RfDetrVisionCoordinator
+from custom_components.rf_detr_vision.sensor import (
+    RfDetrClassesSensor,
+    RfDetrConfidenceSensor,
+    RfDetrDetectionCountSensor,
+    RfDetrLastDetectedSensor,
 )
 
 
 @pytest.fixture
 def coordinator_with_state(
     mock_hass: MagicMock, mock_config_entry: MagicMock
-) -> YoloLLMVisionCoordinator:
+) -> RfDetrVisionCoordinator:
     """Coordinator with one camera state pre-filled."""
-    coord = YoloLLMVisionCoordinator(mock_hass, mock_config_entry)
+    coord = RfDetrVisionCoordinator(mock_hass, mock_config_entry)
     cam = coord.get_camera_state("camera.test")
     cam.detected = True
     cam.confidence = 0.87
@@ -34,73 +34,73 @@ def coordinator_with_state(
     return coord
 
 
-def test_yolo_confidence_sensor_native_value(
-    coordinator_with_state: YoloLLMVisionCoordinator,
+def test_rf_detr_confidence_sensor_native_value(
+    coordinator_with_state: RfDetrVisionCoordinator,
 ) -> None:
-    sensor = YoloConfidenceSensor(coordinator_with_state, "camera.test")
+    sensor = RfDetrConfidenceSensor(coordinator_with_state, "camera.test")
     assert sensor.native_value == 87.0
 
 
-def test_yolo_detection_count_sensor_native_value(
-    coordinator_with_state: YoloLLMVisionCoordinator,
+def test_rf_detr_detection_count_sensor_native_value(
+    coordinator_with_state: RfDetrVisionCoordinator,
 ) -> None:
-    sensor = YoloDetectionCountSensor(coordinator_with_state, "camera.test")
+    sensor = RfDetrDetectionCountSensor(coordinator_with_state, "camera.test")
     assert sensor.native_value == 2
 
 
-def test_yolo_classes_sensor_native_value(
-    coordinator_with_state: YoloLLMVisionCoordinator,
+def test_rf_detr_classes_sensor_native_value(
+    coordinator_with_state: RfDetrVisionCoordinator,
 ) -> None:
-    sensor = YoloClassesSensor(coordinator_with_state, "camera.test")
+    sensor = RfDetrClassesSensor(coordinator_with_state, "camera.test")
     assert sensor.native_value == "person, dog"
 
 
-def test_yolo_classes_sensor_native_value_none(
+def test_rf_detr_classes_sensor_native_value_none(
     mock_hass: MagicMock, mock_config_entry: MagicMock,
 ) -> None:
-    coord = YoloLLMVisionCoordinator(mock_hass, mock_config_entry)
+    coord = RfDetrVisionCoordinator(mock_hass, mock_config_entry)
     cam = coord.get_camera_state("camera.test")
     cam.classes_detected = []
-    sensor = YoloClassesSensor(coord, "camera.test")
+    sensor = RfDetrClassesSensor(coord, "camera.test")
     assert sensor.native_value == "none"
 
 
-def test_yolo_last_detected_sensor_native_value(
-    coordinator_with_state: YoloLLMVisionCoordinator,
+def test_rf_detr_last_detected_sensor_native_value(
+    coordinator_with_state: RfDetrVisionCoordinator,
 ) -> None:
-    sensor = YoloLastDetectedSensor(coordinator_with_state, "camera.test")
+    sensor = RfDetrLastDetectedSensor(coordinator_with_state, "camera.test")
     assert sensor.native_value == "2025-06-15T12:00:00+00:00"
 
 
-def test_yolo_last_detected_sensor_native_value_none(
+def test_rf_detr_last_detected_sensor_native_value_none(
     mock_hass: MagicMock, mock_config_entry: MagicMock,
 ) -> None:
-    coord = YoloLLMVisionCoordinator(mock_hass, mock_config_entry)
-    sensor = YoloLastDetectedSensor(coord, "camera.test")
+    coord = RfDetrVisionCoordinator(mock_hass, mock_config_entry)
+    sensor = RfDetrLastDetectedSensor(coord, "camera.test")
     assert sensor.native_value is None
 
 
-def test_yolo_detection_binary_sensor_is_on(
-    coordinator_with_state: YoloLLMVisionCoordinator,
+def test_rf_detr_detection_binary_sensor_is_on(
+    coordinator_with_state: RfDetrVisionCoordinator,
 ) -> None:
-    sensor = YoloDetectionBinarySensor(coordinator_with_state, "camera.test")
+    sensor = RfDetrDetectionBinarySensor(coordinator_with_state, "camera.test")
     assert sensor.is_on is True
 
 
-def test_yolo_detection_binary_sensor_is_off(
+def test_rf_detr_detection_binary_sensor_is_off(
     mock_hass: MagicMock, mock_config_entry: MagicMock,
 ) -> None:
-    coord = YoloLLMVisionCoordinator(mock_hass, mock_config_entry)
+    coord = RfDetrVisionCoordinator(mock_hass, mock_config_entry)
     cam = coord.get_camera_state("camera.test")
     cam.detected = False
-    sensor = YoloDetectionBinarySensor(coord, "camera.test")
+    sensor = RfDetrDetectionBinarySensor(coord, "camera.test")
     assert sensor.is_on is False
 
 
-def test_yolo_detection_binary_sensor_extra_state_attributes(
-    coordinator_with_state: YoloLLMVisionCoordinator,
+def test_rf_detr_detection_binary_sensor_extra_state_attributes(
+    coordinator_with_state: RfDetrVisionCoordinator,
 ) -> None:
-    sensor = YoloDetectionBinarySensor(coordinator_with_state, "camera.test")
+    sensor = RfDetrDetectionBinarySensor(coordinator_with_state, "camera.test")
     attrs = sensor.extra_state_attributes
     assert attrs is not None
     assert "confidence" in attrs

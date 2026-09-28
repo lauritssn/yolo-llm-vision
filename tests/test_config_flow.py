@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 import voluptuous as vol
 
-from custom_components.yolo_llm_vision.config_flow import _build_schema
-from custom_components.yolo_llm_vision.const import (
+from custom_components.rf_detr_vision.config_flow import _build_schema
+from custom_components.rf_detr_vision.const import (
     CONF_AI_TASK_ENTITY,
     CONF_CAMERAS,
     CONF_LLM_PROMPT,

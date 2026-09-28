@@ -9,11 +9,11 @@
 # =============================================================================
 
 services:
-  yolo-sidecar:
+  rf-detr-sidecar:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: yolo-sidecar
+    container_name: rf-detr-sidecar
     ports:
       - "8000:8000"
     volumes:

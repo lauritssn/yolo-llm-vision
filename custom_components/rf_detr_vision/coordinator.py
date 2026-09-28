@@ -70,7 +70,7 @@ class CameraState:
     inference_time_ms: float = 0.0
 
 
-class YoloLLMVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
+class RfDetrVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
     """Coordinate RF-DETR detection, AI threat analysis, and notifications."""
 
     config_entry: ConfigEntry
@@ -200,7 +200,7 @@ class YoloLLMVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
             ):
                 self.hass.async_create_task(
                     self.analyze_camera(entity_id),
-                    f"yolo_analyze_{entity_id}",
+                    f"rf_detr_analyze_{entity_id}",
                 )
 
         self._unsub_listener = self.hass.bus.async_listen(
@@ -423,7 +423,7 @@ class YoloLLMVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
         self, entity_id: str, annotated_b64: str
     ) -> Path | None:
         try:
-            media_dir = Path(self.hass.config.path("media", "yolo_llm_vision"))
+            media_dir = Path(self.hass.config.path("media", "rf_detr_vision"))
             media_dir.mkdir(parents=True, exist_ok=True)
             safe_name = entity_id.replace(".", "_")
             ts = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")

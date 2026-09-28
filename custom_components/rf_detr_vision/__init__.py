@@ -18,11 +18,11 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .const import CONF_SIDECAR_URL, DEFAULT_SIDECAR_URL, DOMAIN, PLATFORMS
-from .coordinator import YoloLLMVisionCoordinator
+from .coordinator import RfDetrVisionCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-type YoloConfigEntry = ConfigEntry[YoloLLMVisionCoordinator]
+type RfDetrConfigEntry = ConfigEntry[RfDetrVisionCoordinator]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -35,7 +35,7 @@ SERVICE_ANALYZE_SCHEMA = vol.Schema(
 )
 
 
-def _get_coordinator(hass: HomeAssistant) -> YoloLLMVisionCoordinator:
+def _get_coordinator(hass: HomeAssistant) -> RfDetrVisionCoordinator:
     """Return the first loaded coordinator or raise."""
     entries: list[ConfigEntry] = [
         e
@@ -55,7 +55,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     async def handle_analyze(call: ServiceCall) -> dict[str, Any]:
         _LOGGER.debug(
-            "Service yolo_llm_vision.analyze called with data: %s",
+            "Service rf_detr_vision.analyze called with data: %s",
             dict(call.data),
         )
         try:
@@ -131,7 +131,7 @@ async def _check_sidecar_health(hass: HomeAssistant, sidecar_url: str) -> bool:
         return False
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: YoloConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: RfDetrConfigEntry) -> bool:
     """Set up RF-DETR + LLM Vision from a config entry."""
     _LOGGER.debug(
         "async_setup_entry: entry_id=%s, entry.data=%s, entry.options=%s",
@@ -145,7 +145,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: YoloConfigEntry) -> bool
         "Extracted sidecar URL: %s",
         sidecar_url,
     )
-    coordinator = YoloLLMVisionCoordinator(hass, entry)
+    coordinator = RfDetrVisionCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
     coordinator.start_listening()
 
@@ -163,13 +163,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: YoloConfigEntry) -> bool
 
 
 async def _async_update_listener(
-    hass: HomeAssistant, entry: YoloConfigEntry
+    hass: HomeAssistant, entry: RfDetrConfigEntry
 ) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(
-    hass: HomeAssistant, entry: YoloConfigEntry
+    hass: HomeAssistant, entry: RfDetrConfigEntry
 ) -> bool:
     """Unload a RF-DETR + LLM Vision config entry."""
     entry.runtime_data.stop_listening()

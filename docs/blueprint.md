@@ -13,7 +13,7 @@ Trigger (event or motion sensor)
 Camera snapshot saved to /config/www/
      │
      ▼
-yolo_llm_vision.analyze
+rf_detr_vision.analyze
   → sends image to RF-DETR sidecar
   → returns: detected classes, confidence, count
      │
@@ -45,7 +45,7 @@ ai_task.generate_data
 
 ## Prerequisites
 
-1. **yolo_llm_vision** integration configured with sidecar URL + cameras
+1. **rf_detr_vision** integration configured with sidecar URL + cameras
 2. **Camera entity** in Home Assistant
 3. A **trigger**: custom HA event or motion binary_sensor
 4. Optional: **AI Task** integration for detailed analysis
@@ -61,13 +61,13 @@ Install the sidecar and integration first — see [Installation and Setup](setup
 2. Click **Import Blueprint**
 3. Paste:
    ```
-   https://github.com/lauritssn/yolo-llm-vision/blob/main/blueprints/automation/yolo_llm_vision/camera_event_pipeline.yaml
+   https://github.com/lauritssn/rf-detr-vision/blob/main/blueprints/automation/rf_detr_vision/camera_event_pipeline.yaml
    ```
 
 ### Manual Copy
 
 ```
-config/blueprints/automation/yolo_llm_vision/camera_event_pipeline.yaml
+config/blueprints/automation/rf_detr_vision/camera_event_pipeline.yaml
 ```
 
 ## Blueprint Inputs
@@ -103,7 +103,7 @@ config/blueprints/automation/yolo_llm_vision/camera_event_pipeline.yaml
 
 ### 1. Integration-only (recommended)
 
-Configure everything in the integration wizard. Call `yolo_llm_vision.analyze` from automations if you need extra triggers, or rely on camera state listening.
+Configure everything in the integration wizard. Call `rf_detr_vision.analyze` from automations if you need extra triggers, or rely on camera state listening.
 
 ### 2. Full blueprint pipeline
 
@@ -112,7 +112,7 @@ Import the blueprint and set AI Task + Telegram inputs. RF-DETR gates the AI cal
 ### 3. Service-only custom automation
 
 ```yaml
-- action: yolo_llm_vision.analyze
+- action: rf_detr_vision.analyze
   data:
     entity_id: camera.front_door
   response_variable: result

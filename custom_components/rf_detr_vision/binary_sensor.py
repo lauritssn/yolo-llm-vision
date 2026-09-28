@@ -10,25 +10,25 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import YoloConfigEntry
+from . import RfDetrConfigEntry
 from .const import CONF_CAMERAS, DOMAIN
-from .coordinator import CameraState, YoloLLMVisionCoordinator
+from .coordinator import CameraState, RfDetrVisionCoordinator
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: YoloConfigEntry,
+    entry: RfDetrConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
     cameras: list[str] = entry.data.get(CONF_CAMERAS, [])
     async_add_entities(
-        [YoloDetectionBinarySensor(coordinator, cam_id) for cam_id in cameras]
+        [RfDetrDetectionBinarySensor(coordinator, cam_id) for cam_id in cameras]
     )
 
 
-class YoloDetectionBinarySensor(
-    CoordinatorEntity[YoloLLMVisionCoordinator], BinarySensorEntity
+class RfDetrDetectionBinarySensor(
+    CoordinatorEntity[RfDetrVisionCoordinator], BinarySensorEntity
 ):
     """On when the RF-DETR sidecar detects a configured object class."""
 
@@ -36,7 +36,7 @@ class YoloDetectionBinarySensor(
     _attr_has_entity_name = True
 
     def __init__(
-        self, coordinator: YoloLLMVisionCoordinator, camera_entity_id: str
+        self, coordinator: RfDetrVisionCoordinator, camera_entity_id: str
     ) -> None:
         super().__init__(coordinator)
         self._camera = camera_entity_id

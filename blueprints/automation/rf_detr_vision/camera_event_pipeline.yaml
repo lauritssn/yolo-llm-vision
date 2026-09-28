@@ -6,10 +6,10 @@ blueprint:
     when a relevant detection is confirmed. Sends different notifications
     based on the AI threat assessment.
 
-    Requires the yolo_llm_vision integration to be configured.
+    Requires the rf_detr_vision integration to be configured.
   domain: automation
   author: "RF-DETR + LLM Vision"
-  source_url: "https://github.com/lauritssn/yolo-llm-vision/blob/main/blueprints/automation/yolo_llm_vision/camera_event_pipeline.yaml"
+  source_url: "https://github.com/lauritssn/rf-detr-vision/blob/main/blueprints/automation/rf_detr_vision/camera_event_pipeline.yaml"
 
   input:
     camera_entity:
@@ -47,14 +47,14 @@ blueprint:
     trigger_event_type_2:
       name: Trigger event name 2 (optional)
       description: Second event type for the same camera. Leave default to disable.
-      default: "yolo_blueprint_unused_2"
+      default: "rf_detr_blueprint_unused_2"
       selector:
         text: {}
 
     trigger_event_type_3:
       name: Trigger event name 3 (optional)
       description: Third event type for the same camera. Leave default to disable.
-      default: "yolo_blueprint_unused_3"
+      default: "rf_detr_blueprint_unused_3"
       selector:
         text: {}
 
@@ -178,7 +178,7 @@ max: 5
 variables:
   camera_id: !input camera_entity
   camera_short_name: "{{ camera_id.split('.')[-1] | replace('_', ' ') | title }}"
-  snapshot_path: "/config/www/yolo_{{ camera_id | replace('.', '_') }}_{{ now().strftime('%Y%m%d_%H%M%S') }}.jpg"
+  snapshot_path: "/config/www/rf_detr_{{ camera_id | replace('.', '_') }}_{{ now().strftime('%Y%m%d_%H%M%S') }}.jpg"
   ai_entity: !input ai_task_entity
   task_name: !input ai_task_name
   instructions: !input ai_instructions
@@ -198,11 +198,11 @@ triggers:
   - trigger: event
     event_type: !input trigger_event_type_2
     id: event_trigger_2
-    enabled: "{{ trigger_mode in ['event', 'both'] and trigger_event_type_2 not in ['', 'yolo_blueprint_unused_2'] }}"
+    enabled: "{{ trigger_mode in ['event', 'both'] and trigger_event_type_2 not in ['', 'rf_detr_blueprint_unused_2'] }}"
   - trigger: event
     event_type: !input trigger_event_type_3
     id: event_trigger_3
-    enabled: "{{ trigger_mode in ['event', 'both'] and trigger_event_type_3 not in ['', 'yolo_blueprint_unused_3'] }}"
+    enabled: "{{ trigger_mode in ['event', 'both'] and trigger_event_type_3 not in ['', 'rf_detr_blueprint_unused_3'] }}"
   - trigger: state
     entity_id: !input trigger_motion_entity
     to: "on"
@@ -221,14 +221,14 @@ actions:
       seconds: "{{ delay_secs }}"
 
   # 2. Run RF-DETR detection via integration service
-  - action: yolo_llm_vision.analyze
+  - action: rf_detr_vision.analyze
     data:
       entity_id: !input camera_entity
-    response_variable: yolo_result
+    response_variable: rfdetr_result
 
   # 3. Gate: only continue if RF-DETR detected something
   - condition: template
-    value_template: "{{ yolo_result.detected | default(false) }}"
+    value_template: "{{ rfdetr_result.detected | default(false) }}"
 
   # 4. Branch: AI analysis or detection-only notification
   - choose:
@@ -267,8 +267,8 @@ actions:
 
                             {{ ai_response.data }}
 
-                            RF-DETR: {{ yolo_result.classes_detected | default([]) | join(', ') }}
-                            (confidence: {{ (yolo_result.confidence | default(0) * 100) | round(0) }}%)
+                            RF-DETR: {{ rfdetr_result.classes_detected | default([]) | join(', ') }}
+                            (confidence: {{ (rfdetr_result.confidence | default(0) * 100) | round(0) }}%)
 
                             🕐 {{ now().strftime('%H:%M:%S') }}
                       - if:
@@ -302,7 +302,7 @@ actions:
 
                         {{ ai_response.data }}
 
-                        RF-DETR: {{ yolo_result.classes_detected | default([]) | join(', ') }}
+                        RF-DETR: {{ rfdetr_result.classes_detected | default([]) | join(', ') }}
 
                         🕐 {{ now().strftime('%H:%M:%S') }}
                   - if:
@@ -334,9 +334,9 @@ actions:
               message: >-
                 {{ threat_title }} — {{ camera_short_name }}
 
-                RF-DETR detected: {{ yolo_result.classes_detected | default([]) | join(', ') }}
-                Count: {{ yolo_result.detection_count | default(0) }}
-                Confidence: {{ (yolo_result.confidence | default(0) * 100) | round(0) }}%
+                RF-DETR detected: {{ rfdetr_result.classes_detected | default([]) | join(', ') }}
+                Count: {{ rfdetr_result.detection_count | default(0) }}
+                Confidence: {{ (rfdetr_result.confidence | default(0) * 100) | round(0) }}%
 
                 🕐 {{ now().strftime('%H:%M:%S') }}
           - if:
@@ -346,7 +346,7 @@ actions:
               - action: telegram_bot.send_photo
                 data:
                   file: "{{ snapshot_path }}"
-                  caption: "📷 {{ camera_short_name }} — {{ yolo_result.classes_detected | default([]) | join(', ') }}"
+                  caption: "📷 {{ camera_short_name }} — {{ rfdetr_result.classes_detected | default([]) | join(', ') }}"
 
       - if:
           - condition: template
@@ -356,5 +356,5 @@ actions:
             data:
               title: "{{ threat_title }} — {{ camera_short_name }}"
               message: >-
-                RF-DETR detected: {{ yolo_result.classes_detected | default([]) | join(', ') }}
-                (confidence: {{ (yolo_result.confidence | default(0) * 100) | round(0) }}%)
+                RF-DETR detected: {{ rfdetr_result.classes_detected | default([]) | join(', ') }}
+                (confidence: {{ (rfdetr_result.confidence | default(0) * 100) | round(0) }}%)
