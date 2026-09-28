@@ -260,3 +260,115 @@ async def test_analyze_camera_sidecar_4xx_returns_error_and_message(
     assert "message" in result
     assert "502" in result["message"]
     assert "Failed to fetch image" in result["message"]
+
+
+def test_ai_task_enabled_false_when_empty(coordinator: YoloLLMVisionCoordinator) -> None:
+    assert coordinator.ai_task_enabled is False
+
+
+def test_ai_task_enabled_true_when_entity_set(
+    mock_config_entry: MagicMock, mock_hass: MagicMock
+) -> None:
+    mock_config_entry.data = {
+        "sidecar_url": "http://s:8000",
+        "cameras": [],
+        "ai_task_entity": "ai_task.openai_ai_task",
+    }
+    coord = YoloLLMVisionCoordinator(mock_hass, mock_config_entry)
+    assert coord.ai_task_enabled is True
+    assert coord.ai_analysis_enabled is True
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_analyze_camera_with_ai_task_threat_detected(
+    mock_config_entry: MagicMock,
+    mock_hass: MagicMock,
+) -> None:
+    mock_config_entry.data = {
+        **mock_config_entry.data,
+        "ai_task_entity": "ai_task.openai_ai_task",
+        "threat_analysis_prompt": "Analyze the image.",
+        "threat_phrase": "THREAT DETECTED",
+        "notify_service": "notify.test",
+        "notify_on_threat": True,
+        "notify_on_all_clear": False,
+    }
+    coordinator = YoloLLMVisionCoordinator(mock_hass, mock_config_entry)
+
+    respx.post("http://sidecar:8000/detect").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "detected": True,
+                "detection_count": 1,
+                "classes_detected": ["person"],
+                "confidence_max": 0.95,
+                "inference_time_ms": 50.0,
+            },
+        ),
+    )
+    fake_image = Image(content_type="image/jpeg", content=b"fake_jpeg_bytes")
+    mock_hass.services.async_call = AsyncMock(
+        return_value={"data": "Person in driveway. THREAT DETECTED"}
+    )
+
+    with patch(
+        "custom_components.yolo_llm_vision.coordinator.async_get_image",
+        AsyncMock(return_value=fake_image),
+    ):
+        result = await coordinator.analyze_camera("camera.front_door")
+
+    assert result.get("threat_detected") is True
+    assert "THREAT DETECTED" in result.get("ai_analysis", "")
+    mock_hass.services.async_call.assert_called()
+    first_call = mock_hass.services.async_call.call_args_list[0]
+    assert first_call[0][0] == "ai_task"
+    assert first_call[0][1] == "generate_data"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_analyze_camera_with_ai_task_all_clear(
+    mock_config_entry: MagicMock,
+    mock_hass: MagicMock,
+) -> None:
+    mock_config_entry.data = {
+        **mock_config_entry.data,
+        "ai_task_entity": "ai_task.openai_ai_task",
+        "notify_service": "notify.test",
+        "notify_on_threat": False,
+        "notify_on_all_clear": True,
+        "all_clear_notification_title": "All Clear",
+    }
+    coordinator = YoloLLMVisionCoordinator(mock_hass, mock_config_entry)
+
+    respx.post("http://sidecar:8000/detect").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "detected": True,
+                "detection_count": 1,
+                "classes_detected": ["dog"],
+                "confidence_max": 0.88,
+                "inference_time_ms": 40.0,
+            },
+        ),
+    )
+    fake_image = Image(content_type="image/jpeg", content=b"fake_jpeg_bytes")
+    mock_hass.services.async_call = AsyncMock(
+        return_value={"data": "Small dog in yard, no threat."}
+    )
+
+    with patch(
+        "custom_components.yolo_llm_vision.coordinator.async_get_image",
+        AsyncMock(return_value=fake_image),
+    ):
+        result = await coordinator.analyze_camera("camera.front_door")
+
+    assert result.get("threat_detected") is False
+    notify_calls = [
+        c for c in mock_hass.services.async_call.call_args_list if c[0][0] == "notify"
+    ]
+    assert len(notify_calls) == 1
+    assert notify_calls[0][0][2]["title"].startswith("All Clear")

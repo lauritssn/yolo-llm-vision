@@ -53,7 +53,9 @@ class YoloDetectionBinarySensor(
         return self._cam_state.detected
 
     @property
-    def extra_state_attributes(self) -> dict[str, str | float | int | list[str] | None]:
+    def extra_state_attributes(self) -> dict[
+        str, str | float | int | bool | list[str] | None
+    ]:
         cam = self._cam_state
         return {
             "confidence": cam.confidence,
@@ -61,6 +63,7 @@ class YoloDetectionBinarySensor(
             "classes_detected": cam.classes_detected,
             "last_seen": cam.last_seen.isoformat() if cam.last_seen else None,
             "llm_summary": cam.llm_result,
+            "threat_detected": cam.threat_detected,
         }
 
     @callback

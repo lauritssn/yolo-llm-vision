@@ -7,10 +7,13 @@ import voluptuous as vol
 
 from custom_components.yolo_llm_vision.config_flow import _build_schema
 from custom_components.yolo_llm_vision.const import (
+    CONF_AI_TASK_ENTITY,
     CONF_CAMERAS,
     CONF_LLM_PROMPT,
     CONF_LLM_PROVIDER,
+    CONF_NOTIFY_ON_THREAT,
     CONF_SIDECAR_URL,
+    CONF_THREAT_PROMPT,
 )
 
 
@@ -30,6 +33,9 @@ def test_build_schema_returns_schema_with_required_keys() -> None:
     keys = _schema_keys(schema)
     assert CONF_SIDECAR_URL in keys
     assert CONF_CAMERAS in keys
+    assert CONF_AI_TASK_ENTITY in keys
+    assert CONF_THREAT_PROMPT in keys
+    assert CONF_NOTIFY_ON_THREAT in keys
 
 
 def test_build_schema_show_llm_true_includes_llm_keys() -> None:

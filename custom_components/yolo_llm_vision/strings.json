@@ -6,54 +6,116 @@
   },
   "config": {
     "step": {
-      "user": {
-        "title": "YOLO + LLM Vision",
-        "description": "Configure your YOLO detection sidecar. LLM Vision fields appear only when that integration is installed.",
+      "sidecar": {
+        "title": "RF-DETR sidecar",
+        "description": "Connect to your local RF-DETR segmentation sidecar.",
         "data": {
-          "sidecar_url": "YOLO sidecar URL",
+          "sidecar_url": "Sidecar URL"
+        },
+        "data_description": {
+          "sidecar_url": "URL of the RF-DETR sidecar, e.g. http://192.168.1.50:8000"
+        }
+      },
+      "cameras": {
+        "title": "Cameras & detection",
+        "description": "Choose cameras and which object classes should trigger analysis.",
+        "data": {
           "cameras": "Cameras to monitor",
           "confidence_threshold": "Confidence threshold",
           "detection_classes": "Object classes to detect",
-          "draw_boxes": "Draw bounding boxes on detections",
-          "save_annotated_image": "Save annotated snapshots to /media",
-          "llm_provider": "LLM Vision provider (optional)",
-          "llm_prompt": "LLM Vision prompt (optional)",
-          "notify_service": "Notification service (e.g. notify.mobile_app)"
+          "draw_boxes": "Draw segmentation overlays on snapshots",
+          "save_annotated_image": "Save annotated snapshots to /media"
         },
         "data_description": {
-          "sidecar_url": "URL of the YOLOv8 Docker sidecar, e.g. http://192.168.1.50:8000",
           "confidence_threshold": "Minimum confidence to accept a detection (0.1 – 1.0)",
-          "detection_classes": "Which COCO object classes should trigger a detection. Person and dog are common for security cameras. Note: deer is not a standard COCO class — use horse as a close proxy.",
-          "draw_boxes": "Overlay coloured bounding boxes on the camera snapshot for each detection",
-          "save_annotated_image": "Save the annotated image to the Home Assistant /media folder",
-          "notify_service": "Full service name, e.g. notify.mobile_app_phone or telegram_bot.send_message"
+          "detection_classes": "Only these COCO classes pass the detection gate before AI analysis runs"
+        }
+      },
+      "ai_analysis": {
+        "title": "AI threat analysis",
+        "description": "Configure ChatGPT / AI Task analysis when a relevant object is detected.",
+        "data": {
+          "ai_task_entity": "AI Task entity",
+          "ai_task_name": "AI Task name",
+          "threat_analysis_prompt": "Threat analysis prompt",
+          "threat_phrase": "Threat phrase",
+          "llm_provider": "LLM Vision provider (optional fallback)",
+          "llm_prompt": "LLM Vision prompt (optional fallback)"
+        },
+        "data_description": {
+          "ai_task_entity": "e.g. ai_task.openai_ai_task — used for ChatGPT threat analysis",
+          "threat_analysis_prompt": "Instructions sent to the AI. Include guidance to end with the threat phrase when something suspicious is found.",
+          "threat_phrase": "Text the AI must include when a threat is detected (default: THREAT DETECTED)"
+        }
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Choose when and how to notify after detection and AI analysis.",
+        "data": {
+          "notify_service": "Notification service",
+          "notify_on_threat": "Send notification on threat",
+          "notify_on_all_clear": "Send notification when all clear",
+          "threat_notification_title": "Threat notification title",
+          "all_clear_notification_title": "All-clear notification title",
+          "notify_include_photo": "Attach photo (Telegram only)"
+        },
+        "data_description": {
+          "notify_service": "Full service name, e.g. notify.mobile_app_phone or telegram_bot.send_message",
+          "notify_on_threat": "Notify when AI reports a threat (or on detection-only if AI is disabled)",
+          "notify_on_all_clear": "Notify when AI runs but no threat phrase is found"
         }
       }
     }
   },
   "options": {
     "step": {
-      "init": {
-        "title": "YOLO + LLM Vision Options",
-        "description": "Update your YOLO + LLM Vision settings.",
+      "menu": {
+        "title": "Configure YOLO + LLM Vision",
+        "description": "Choose a settings section to update.",
         "data": {
-          "sidecar_url": "YOLO sidecar URL",
+          "next_step": "Settings section"
+        }
+      },
+      "sidecar": {
+        "title": "RF-DETR sidecar",
+        "description": "Connect to your local RF-DETR segmentation sidecar.",
+        "data": {
+          "sidecar_url": "Sidecar URL"
+        }
+      },
+      "cameras": {
+        "title": "Cameras & detection",
+        "description": "Choose cameras and which object classes should trigger analysis.",
+        "data": {
           "cameras": "Cameras to monitor",
           "confidence_threshold": "Confidence threshold",
           "detection_classes": "Object classes to detect",
-          "draw_boxes": "Draw bounding boxes on detections",
-          "save_annotated_image": "Save annotated snapshots to /media",
-          "llm_provider": "LLM Vision provider (optional)",
-          "llm_prompt": "LLM Vision prompt (optional)",
-          "notify_service": "Notification service"
-        },
-        "data_description": {
-          "sidecar_url": "URL of the YOLOv8 Docker sidecar",
-          "confidence_threshold": "Minimum confidence to accept a detection (0.1 – 1.0)",
-          "detection_classes": "Which COCO object classes should trigger a detection",
-          "draw_boxes": "Overlay coloured bounding boxes on the camera snapshot",
-          "save_annotated_image": "Save the annotated image to /media",
-          "notify_service": "Full service name, e.g. notify.mobile_app_phone"
+          "draw_boxes": "Draw segmentation overlays on snapshots",
+          "save_annotated_image": "Save annotated snapshots to /media"
+        }
+      },
+      "ai_analysis": {
+        "title": "AI threat analysis",
+        "description": "Configure ChatGPT / AI Task analysis when a relevant object is detected.",
+        "data": {
+          "ai_task_entity": "AI Task entity",
+          "ai_task_name": "AI Task name",
+          "threat_analysis_prompt": "Threat analysis prompt",
+          "threat_phrase": "Threat phrase",
+          "llm_provider": "LLM Vision provider (optional fallback)",
+          "llm_prompt": "LLM Vision prompt (optional fallback)"
+        }
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Choose when and how to notify after detection and AI analysis.",
+        "data": {
+          "notify_service": "Notification service",
+          "notify_on_threat": "Send notification on threat",
+          "notify_on_all_clear": "Send notification when all clear",
+          "threat_notification_title": "Threat notification title",
+          "all_clear_notification_title": "All-clear notification title",
+          "notify_include_photo": "Attach photo (Telegram only)"
         }
       }
     }
