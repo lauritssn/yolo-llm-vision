@@ -69,7 +69,7 @@
   },
   "options": {
     "step": {
-      "menu": {
+      "init": {
         "title": "Configure RF-DETR + LLM Vision",
         "description": "Choose a settings section to update.",
         "data": {

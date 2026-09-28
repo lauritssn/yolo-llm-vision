@@ -55,7 +55,7 @@ STEP_SIDECAR = "sidecar"
 STEP_CAMERAS = "cameras"
 STEP_AI = "ai_analysis"
 STEP_NOTIFICATIONS = "notifications"
-STEP_MENU = "menu"
+STEP_INIT = "init"
 
 
 def _merged_config(entry: ConfigEntry | None, draft: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -294,7 +294,7 @@ class RfDetrVisionOptionsFlow(OptionsFlow):
             step = user_input["next_step"]
             return getattr(self, f"async_step_{step}")()
         return self.async_show_form(
-            step_id=STEP_MENU,
+            step_id=STEP_INIT,
             data_schema=vol.Schema(
                 {
                     vol.Required("next_step"): selector.SelectSelector(
