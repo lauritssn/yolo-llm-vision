@@ -39,7 +39,7 @@ Camera Motion
 
 1. **Settings > Add-ons > Add-on Store** > three-dot menu (⋮) > **Repositories**
 2. Add repository URL: `https://github.com/lauritssn/yolo-llm-vision` → **Add** → **Close**
-3. In the Add-on Store, find **RF-DETR Object Detection** → **Install**
+3. In the Add-on Store, find **RF-DETR Segmentation** → **Install**
 4. Open the add-on → **Start**
 
 The first install can take several minutes (image build and model download). Wait until the add-on **Log** shows “Sidecar ready” before configuring the integration.
@@ -125,7 +125,7 @@ The blueprint replaces manual automations with a configurable pipeline:
 
 1. **Trigger** — an HA event or motion sensor
 2. **Snapshot** — grabs the camera image
-3. **YOLO gate** — runs local detection, stops if nothing relevant found
+3. **RF-DETR gate** — runs local segmentation, stops if nothing relevant found
 4. **AI analysis** (optional) — calls `ai_task.generate_data` for detailed threat assessment
 5. **Notification** — sends Telegram message + photo, with threat/all-clear distinction
 
@@ -169,7 +169,7 @@ The sidecar uses standard COCO-80 classes. Configure which ones trigger a detect
 | cat | 15 | no (excluded) |
 | bird | 14 | no (excluded) |
 
-**Note on deer:** COCO does not include deer. Deer may be classified as `horse` or `cow` by the standard model. For reliable deer detection, add `horse` to your detection classes or use a custom YOLO model.
+**Note on deer:** COCO does not include deer. Deer may be classified as `horse` or `cow` by the standard model. Add those classes as proxies, or use a custom RF-DETR checkpoint via `RFDETR_CHECKPOINT`.
 
 ## Entities Created
 
@@ -183,7 +183,7 @@ For each configured camera:
 | `sensor.yolo_classes_*` | Sensor | Comma-separated detected class names |
 | `sensor.yolo_last_detected_*` | Sensor | Timestamp of last detection |
 | `sensor.yolo_llm_summary_*` | Sensor | LLM analysis text (only if LLM configured) |
-| `image.yolo_annotated_*` | Image | Last annotated snapshot with bounding boxes |
+| `image.yolo_annotated_*` | Image | Last annotated snapshot with segmentation overlays |
 
 ## Service: yolo_llm_vision.analyze
 
@@ -207,7 +207,9 @@ classes_detected:
   - person
   - dog
 last_seen: "2026-02-22T15:30:00+00:00"
-llm_summary: "A person walking a large dog..."  # only if LLM enabled
+ai_analysis: "Person walking a dog. THREAT DETECTED"  # when AI Task / LLM enabled
+threat_detected: true
+llm_summary: "Person walking a dog. THREAT DETECTED"  # same text as ai_analysis
 ```
 
 ## Events
@@ -228,13 +230,13 @@ data:
 ## FAQ
 
 **Q: Can it detect deer?**
-A: The standard COCO model does not have a "deer" class. Deer might be detected as `horse` or `cow`. Add those to your detection classes as a proxy, or train/use a custom YOLO model.
+A: COCO has no deer class. Deer may appear as `horse` or `cow`. Add those classes, or use a custom RF-DETR `.pth` checkpoint.
 
 **Q: Does the AI analysis require LLM Vision?**
-A: No. The blueprint uses `ai_task.generate_data` which works with any AI Task provider (OpenAI, Google, Anthropic, etc.). The LLM Vision integration is a separate optional feature in the integration settings.
+A: No. Configure **AI Task** in the integration wizard — it uses `ai_task.generate_data` with any AI Task provider (OpenAI, Google, Anthropic, etc.). LLM Vision is an optional fallback.
 
 **Q: Can I use this without AI analysis at all?**
-A: Yes. Leave the AI Task entity empty in the blueprint and you get YOLO-only detection with Telegram notifications showing what was detected.
+A: Yes. Leave the AI Task entity empty in the integration config. You still get RF-DETR detection and optional detection-only notifications when **Notify on threat** is enabled.
 
 **Q: How fast is RF-DETR detection?**
 A: RF-DETR Nano runs in ~2–30ms on GPU and ~50–200ms on CPU depending on hardware. Much faster than any cloud API call.
@@ -244,8 +246,5 @@ A: Yes. Start the sidecar and open `http://localhost:8000/try` for an interactiv
 
 ## Development & testing
 
-- **Unit tests** (no YOLO model): from project root run `uv sync --extra test` then `uv run pytest tests/`. See `tests/` and `pyproject.toml` optional deps.
-- **Integration tests** (real YOLO model, `_run_inference`): you need the YOLO weights and the sidecar running locally. See **[docs/integration-testing.md](docs/integration-testing.md)** for:
-  - How to **download the YOLO model** (automatic on first run, or manual `curl` into `sidecar/models/`)
-  - Installing sidecar deps and running the sidecar locally
-  - Running integration tests against the live sidecar
+- **Unit tests** (no RF-DETR model): from project root run `uv sync --extra test` then `uv run pytest tests/`.
+- **Live sidecar tests**: start the sidecar locally and use `/try` or POST `/detect`. See **[docs/integration-testing.md](docs/integration-testing.md)** for RF-DETR model download, env vars, and curl examples.

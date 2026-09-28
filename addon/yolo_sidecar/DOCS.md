@@ -1,47 +1,41 @@
-# YOLO Object Detection — Add-on Documentation
+# RF-DETR Segmentation — Add-on Documentation
 
-This add-on runs a local YOLOv8 object detection server. It is used by the
-**YOLO + LLM Vision** HACS integration to detect people, animals, vehicles,
-and other objects in camera images before calling expensive AI analysis.
+This add-on runs a local [Roboflow RF-DETR](https://github.com/roboflow/rf-detr) instance segmentation server. The **YOLO + LLM Vision** HACS integration sends camera snapshots here for local detection before optional AI threat analysis.
 
-**Install from the Add-on Store:** **Settings > Add-ons > Add-on Store** → ⋮ → **Repositories** → add `https://github.com/lauritssn/yolo-llm-vision` → then install **YOLO Object Detection**. Full installation steps are in the repo [README](https://github.com/lauritssn/yolo-llm-vision#quick-start) and [docs/setup.md](https://github.com/lauritssn/yolo-llm-vision/blob/main/docs/setup.md).
+**Install from the Add-on Store:** **Settings > Add-ons > Add-on Store** → ⋮ → **Repositories** → add `https://github.com/lauritssn/yolo-llm-vision` → install **RF-DETR Segmentation**.
+
+Full steps: [README](https://github.com/lauritssn/yolo-llm-vision#quick-start) and [docs/setup.md](https://github.com/lauritssn/yolo-llm-vision/blob/main/docs/setup.md).
 
 ## Installation time
 
-**Installation and first start can take a long time** (often several minutes).
-The add-on has to build a Docker image and, on first run, download the YOLOv8
-model (~6 MB for the default model). This is normal — later starts are much
-faster. Wait for the add-on log to show “Sidecar ready” before configuring the
-integration.
+**First install and start can take several minutes.** The add-on builds a Docker image and downloads RF-DETR weights on first run. This is normal — later starts are much faster. Wait for the log to show **Sidecar ready** before configuring the integration.
 
 ## How It Works
 
-The add-on starts a FastAPI server on port 8000. The YOLO + LLM Vision
-integration sends camera snapshots to this server, which runs YOLOv8
-inference locally and returns what it found (detected classes, confidence,
-bounding boxes).
+The add-on starts a FastAPI server on port **8000**. The integration POSTs images to `/detect` and receives:
 
-Everything runs on your QNAP/HAOS machine. No images leave your network.
+- Detected classes and confidence
+- Bounding boxes and segmentation metadata
+- Optional annotated JPEG (light-green masks)
+
+Everything runs locally. No images are sent to the cloud by the sidecar itself.
 
 ## Configuration
 
 ### Model
 
-Which YOLOv8 model to use. Smaller models are faster, larger models are more
-accurate.
+RF-DETR preset size. Smaller is faster; larger is more accurate.
 
-| Model | Size | Speed | Use Case |
-|---|---|---|---|
-| `yolov8n.pt` | 6 MB | Fastest | Default — good for most cameras |
-| `yolov8s.pt` | 22 MB | Fast | Better accuracy |
-| `yolov8m.pt` | 50 MB | Moderate | Best accuracy (needs more RAM) |
-
-The default `yolov8n.pt` is downloaded automatically on first start.
+| Preset | Speed | Use case |
+|---|---|---|
+| `nano` | Fastest | Default — good for most cameras and CPU |
+| `small` | Fast | Better accuracy |
+| `medium` | Moderate | Higher accuracy |
+| `large` | Slower | Best open-source preset |
 
 ### Confidence Threshold
 
-Minimum confidence score (0.1–1.0) for a detection to be accepted. Default is
-0.5. Increase to reduce false positives, decrease to catch more objects.
+Minimum score (0.1–1.0) for a detection at the sidecar level. Default **0.5**. The integration sends its own threshold (default **0.6**) on each `/detect` call.
 
 ### Log Level
 
@@ -49,50 +43,36 @@ Set to `debug` for verbose logging during troubleshooting.
 
 ## Integration Setup
 
-After starting this add-on, configure the YOLO + LLM Vision integration:
+After starting this add-on:
 
-1. Go to **Settings > Devices & Services > Add Integration**
-2. Search for "YOLO + LLM Vision"
-3. For the sidecar URL, enter:
+1. **Settings > Devices & Services > Add Integration**
+2. Search **YOLO + LLM Vision**
+3. Sidecar URL — try in order:
 
 ```
 http://local-yolo-sidecar:8000
-```
-
-If that does not work, try:
-
-```
 http://addon_local_yolo_sidecar:8000
-```
-
-Or use your HAOS IP with the exposed port:
-
-```
 http://<your-haos-ip>:8000
 ```
 
-## Building the add-on image locally
-
-To test the add-on build before installing via Supervisor (e.g. to avoid long waits or to debug build failures):
-
-```bash
-cd addon/yolo_sidecar
-docker build -t yolo-sidecar-addon:local .
-```
-
-Then run it (optional):
-
-```bash
-docker run --rm -p 8000:8000 yolo-sidecar-addon:local
-```
+4. Complete the wizard: cameras, AI Task, threat prompt, notifications
 
 ## Verifying the Add-on
 
-Check the add-on log tab — you should see:
+Check the add-on **Log** tab:
 
 ```
-Starting YOLO sidecar — model=yolov8n.pt, threshold=0.5
-Sidecar ready — model=yolov8n.pt, threshold=0.50
+Sidecar ready — task=segmentation, model=seg-nano, threshold=0.50
+```
+
+Or open `http://<ha-ip>:8000/health` and `http://<ha-ip>:8000/try`.
+
+## Building locally
+
+```bash
+cd addon/yolo_sidecar
+docker build -t rf-detr-sidecar:local .
+docker run --rm -p 8000:8000 rf-detr-sidecar:local
 ```
 
 ## Supported Architectures

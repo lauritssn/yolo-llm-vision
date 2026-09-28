@@ -1,27 +1,24 @@
-# YOLO Sidecar — Docker Setup
+# RF-DETR Sidecar — Docker Setup
 
-The YOLO sidecar is a lightweight FastAPI service that runs YOLOv8 inference locally. It accepts camera images and returns structured detection results with optional annotated images.
+The sidecar is a lightweight FastAPI service that runs [Roboflow RF-DETR](https://github.com/roboflow/rf-detr) **instance segmentation** locally. It accepts camera images and returns structured detection results with optional annotated images (light-green masks).
 
 ## Quick Start
 
 ```bash
 cd sidecar
 cp .env.example .env     # edit as needed
-
-# CPU
-docker compose up -d
-
-# NVIDIA GPU — uncomment the GPU section in docker-compose.yml first
 docker compose up -d
 ```
 
 The service starts on port **8000** by default.
 
+Open the interactive demo at **http://localhost:8000/try** (sample images included).
+
 ## API Reference
 
 ### POST /detect
 
-Run object detection on an image.
+Run instance segmentation on an image.
 
 **Request body (JSON):**
 
@@ -33,8 +30,8 @@ Run object detection on an image.
 | `ha_url` | string | with entity_id | — | Home Assistant base URL |
 | `ha_token` | string | with entity_id | — | Long-lived access token |
 | `confidence_threshold` | float | no | env `CONFIDENCE_THRESHOLD` (0.5) | Minimum confidence (0.0–1.0) |
-| `classes` | list[string] | no | all 80 COCO classes | Object class names to detect, e.g. `["person", "dog", "car"]` |
-| `draw_boxes` | bool | no | true | Draw labelled bounding boxes on the image |
+| `classes` | list[string] | no | all COCO classes | Class names to keep, e.g. `["person", "dog", "car"]` |
+| `draw_boxes` | bool | no | true | Draw segmentation overlays, boxes, and labels |
 
 **Response (JSON):**
 
@@ -47,32 +44,49 @@ Run object detection on an image.
   "confidence_avg": 0.88,
   "detections": [
     {
+      "id": 0,
       "class": "person",
       "class_id": 0,
       "confidence": 0.94,
-      "bbox": [120.5, 45.2, 380.1, 520.7]
-    },
-    {
-      "class": "dog",
-      "class_id": 16,
-      "confidence": 0.82,
-      "bbox": [400.0, 300.0, 550.0, 480.0]
+      "bbox": [120.5, 45.2, 380.1, 520.7],
+      "segment": {
+        "area_pixels": 45230,
+        "area_percent": 12.4,
+        "centroid": [250.1, 280.5],
+        "polygon": [[120, 45], [380, 520]]
+      }
     }
   ],
   "inference_time_ms": 23.4,
+  "task": "segmentation",
+  "model": {
+    "engine": "rf-detr-seg",
+    "preset": "seg-nano"
+  },
+  "image": {
+    "width": 640,
+    "height": 480
+  },
   "annotated_image_base64": "..."
 }
 ```
 
-The `annotated_image_base64` field is only present when `draw_boxes` is true **and** at least one object was detected.
+The `annotated_image_base64` field is present when `draw_boxes` is true **and** at least one object was detected. Masks use a light-green overlay.
 
 ### GET /health
 
-Returns `{"status": "ok", "model": "yolov8n.pt"}`.
+```json
+{
+  "status": "ok",
+  "model": "seg-nano",
+  "engine": "rf-detr-seg",
+  "task": "segmentation"
+}
+```
 
 ### GET /classes
 
-Returns all 80 COCO class names the model can detect:
+Returns all COCO class names the model can detect:
 
 ```json
 {"classes": ["person", "bicycle", "car", "..."]}
@@ -80,70 +94,64 @@ Returns all 80 COCO class names the model can detect:
 
 ### GET /models
 
-Lists `.pt` model files found in the `/models` volume.
+Lists active preset, available presets, and custom checkpoints in `MODELS_DIR`:
+
+```json
+{
+  "active": "seg-nano",
+  "task": "segmentation",
+  "presets": ["nano", "small", "medium", "large"],
+  "checkpoints": ["my-finetuned.pth"]
+}
+```
+
+### GET /try
+
+Interactive web page to test segmentation on bundled sample images.
 
 ## COCO Class Names
 
-The standard YOLOv8 model uses the COCO-80 dataset. Some commonly used classes for security cameras:
+RF-DETR uses the COCO-80 dataset. Common classes for security cameras:
 
 | Class | ID | Notes |
 |---|---|---|
 | person | 0 | People |
-| bicycle | 1 | |
 | car | 2 | |
-| motorcycle | 3 | |
-| bus | 5 | |
 | truck | 7 | |
-| bird | 14 | Often excluded for security |
-| cat | 15 | Often excluded for security |
 | dog | 16 | |
 | horse | 17 | Closest proxy for **deer** |
 | cow | 19 | |
 | bear | 21 | |
+| cat | 15 | Often excluded for security |
+| bird | 14 | Often excluded for security |
 
-**Deer are not in the COCO dataset.** In practice, deer may be classified as `horse`, `cow`, or not detected at all. For reliable deer detection, consider a custom-trained YOLO model.
-
-## Bounding Box Colors
-
-Each class has a color-coded bounding box:
-
-| Class | Color |
-|---|---|
-| person | Green |
-| dog | Orange |
-| car / truck | Red |
-| Other | Cyan |
+**Deer are not in COCO.** Deer may be classified as `horse`, `cow`, or missed. Add those classes as proxies, or use a custom `.pth` checkpoint via `RFDETR_CHECKPOINT`.
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `YOLO_MODEL` | `yolov8n.pt` | Model file name (nano = fast, large = accurate) |
-| `CONFIDENCE_THRESHOLD` | `0.5` | Default confidence threshold |
+| `RFDETR_MODEL` | `nano` | Preset: `nano`, `small`, `medium`, or `large` |
+| `RFDETR_CHECKPOINT` | — | Optional custom `.pth` filename in `MODELS_DIR` |
+| `MODELS_DIR` | `/models` | Directory for custom checkpoints |
+| `CONFIDENCE_THRESHOLD` | `0.5` | Default threshold (integration overrides per request) |
 | `PORT` | `8000` | Listen port |
+
+See `sidecar/.env.example` for comments.
+
+## Model Presets
+
+| Preset | Speed | Accuracy | Use case |
+|---|---|---|---|
+| `nano` | Fastest | Good | Default, CPU-friendly |
+| `small` | Fast | Better | Balanced |
+| `medium` | Moderate | Great | When accuracy matters |
+| `large` | Slower | Best preset | Maximum accuracy |
+
+Weights download automatically on first run (cached under `~/.roboflow/models/`).
+
+Place custom fine-tuned `.pth` files in `sidecar/models/` and set `RFDETR_CHECKPOINT`.
 
 ## GPU Support
 
-Uncomment the GPU section in `docker-compose.yml`:
-
-```yaml
-deploy:
-  resources:
-    reservations:
-      devices:
-        - driver: nvidia
-          count: 1
-          capabilities: [gpu]
-```
-
-Requires NVIDIA Container Toolkit installed on the host.
-
-## Model Options
-
-| Model | Size | Speed | Accuracy | Use Case |
-|---|---|---|---|---|
-| `yolov8n.pt` | 6 MB | ~5ms GPU / ~30ms CPU | Good | Default, fast |
-| `yolov8s.pt` | 22 MB | ~10ms GPU / ~60ms CPU | Better | Balanced |
-| `yolov8m.pt` | 50 MB | ~20ms GPU / ~120ms CPU | Great | When accuracy matters |
-
-Place custom models in the `sidecar/models/` directory.
+Uncomment the GPU section in `docker-compose.yml` if you have NVIDIA Container Toolkit on the host. RF-DETR runs on CPU by default, which is fine for the Nano preset on most NAS hardware.

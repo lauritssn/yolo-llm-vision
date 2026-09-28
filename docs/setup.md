@@ -1,30 +1,29 @@
 # Installation and Setup
 
-You need two things: the **YOLO sidecar** (runs detection) and the **YOLO + LLM Vision** integration (connects HA to the sidecar). Install the sidecar first, then the integration via HACS.
+You need two things: the **RF-DETR sidecar** (runs local segmentation) and the **YOLO + LLM Vision** integration (connects HA to the sidecar and runs the full pipeline). Install the sidecar first, then the integration via HACS.
 
 | Step | What | Where |
 |------|------|--------|
-| 1 | YOLO sidecar | Add-on Store (HAOS) or Docker (see below) |
+| 1 | RF-DETR sidecar | Add-on Store (HAOS) or Docker (see below) |
 | 2 | YOLO + LLM Vision integration | HACS → Custom repositories → Type: **Integration** |
-| 3 | Configure | Settings > Devices & Services > Add Integration |
-| 4 | (Optional) Blueprint | Settings > Automations & Scenes > Blueprints > Import |
+| 3 | Configure | Settings > Devices & Services → Add Integration (4-step wizard) |
+| 4 | (Optional) Blueprint | Only if you want the pipeline in a custom automation |
 
 ## Prerequisites
 
 1. **Home Assistant** 2025.1.0 or newer
 2. **HACS** installed ([instructions](https://hacs.xyz/docs/use/))
 3. At least one **camera entity** in Home Assistant
-4. Optional: **AI Task** integration (OpenAI, Google, etc.) for the blueprint's AI analysis
+4. Optional: **AI Task** integration (OpenAI, Google, etc.) for threat analysis
+5. Optional: **Telegram Bot** or other **notify** service
 
-## Step 1: Install the YOLO Sidecar
+## Step 1: Install the RF-DETR Sidecar
 
-The YOLO sidecar runs YOLOv8 object detection locally. Choose the installation
-method that matches your HA setup.
+The sidecar runs [Roboflow RF-DETR](https://github.com/roboflow/rf-detr) instance segmentation locally. Choose the method that matches your HA setup.
 
-### Home Assistant OS (Recommended — QNAP VM, Raspberry Pi, etc.)
+### Home Assistant OS (Recommended)
 
-On HAOS, the sidecar runs as a **Home Assistant add-on** — installed and managed
-directly from the HA UI.
+On HAOS, the sidecar runs as a **Home Assistant add-on**.
 
 #### Option A: Add-on Repository (Recommended)
 
@@ -32,45 +31,30 @@ directly from the HA UI.
 2. Click the three-dot menu (top right) > **Repositories**
 3. Add: `https://github.com/lauritssn/yolo-llm-vision`
 4. Click **Add** then **Close**
-5. Find **YOLO Object Detection** in the store and click **Install**
-6. **Important:** The first build can take **5–15 minutes** (Debian base image and PyTorch download). Do not cancel.
+5. Find **RF-DETR Segmentation** in the store and click **Install**
+6. **Important:** The first build can take **5–15 minutes** (image build and model download). Do not cancel.
 7. When installation finishes, open the add-on → **Configuration** tab (optional):
-   - **Model**: `yolov8n.pt` (default, fastest) or `yolov8s.pt` (more accurate)
-   - **Confidence threshold**: `0.5` (default)
+   - **Model**: `nano` (default, fastest) or `small` / `medium` / `large` (more accurate)
+   - **Confidence threshold**: `0.5` (default; the integration overrides this when calling `/detect`)
 8. Click **Start**
-9. Check the **Log** tab — wait until you see:
+9. Check the **Log** tab — wait until you see something like:
    ```
-   Starting YOLO sidecar — model=yolov8n.pt, threshold=0.5
-   Sidecar ready — model=yolov8n.pt, threshold=0.50
+   Sidecar ready — task=segmentation, model=seg-nano, threshold=0.50
    ```
-   The first start also downloads the YOLO model (~6 MB). After that, starts are fast.
 
 #### Option B: Local Add-on (No GitHub Needed)
 
-If you prefer not to add a repository, copy the add-on files directly to your
-HAOS instance.
-
 1. Access your HAOS config directory via Samba, SSH, or the File Editor add-on
 2. Create the folder: `addons/yolo_sidecar/`
-3. Copy everything from this repo's `addon/yolo_sidecar/` into that folder:
-   ```
-   addons/yolo_sidecar/
-   ├── build.yaml
-   ├── config.yaml
-   ├── Dockerfile
-   ├── main.py
-   ├── requirements.txt
-   └── run.sh
-   ```
+3. Copy everything from this repo's `addon/yolo_sidecar/` into that folder
 4. Go to **Settings > Add-ons > Add-on Store**
 5. Click the three-dot menu > **Check for updates**
-6. Find **YOLO Object Detection** under **Local add-ons** and install it
+6. Find **RF-DETR Segmentation** under **Local add-ons** and install it
 7. Configure and start as above
 
 #### Sidecar URL for the Integration
 
-When configuring the YOLO + LLM Vision integration, use one of these URLs
-for the sidecar:
+When configuring the integration, use one of these URLs:
 
 | URL to try | When to use |
 |---|---|
@@ -78,114 +62,81 @@ for the sidecar:
 | `http://addon_local_yolo_sidecar:8000` | Alternative internal hostname |
 | `http://<your-HAOS-IP>:8000` | Fallback — uses the exposed port |
 
-The first option works in most HAOS setups. If it fails during integration
-setup, try the next one.
+Verify: open `http://<sidecar-host>:8000/health` — you should see `"status":"ok"` and `"engine":"rf-detr-seg"`.
 
-### Docker / Docker Compose (HA Container Installations)
+### Docker / Home Assistant Container
 
-If you run HA Container (plain Docker, not HAOS), add-ons are not available.
-Run the sidecar as a regular Docker container instead.
-
-#### Add to Your Existing HA Compose File
-
-Add the `yolo-sidecar` service to the same `docker-compose.yml` as your
-`homeassistant` container:
-
-```yaml
-services:
-  homeassistant:
-    # ... your existing HA config ...
-
-  yolo-sidecar:
-    build:
-      context: /path/to/yolo-llm-vision/sidecar
-      dockerfile: Dockerfile
-    container_name: yolo-sidecar
-    ports:
-      - "8000:8000"
-    volumes:
-      - /path/to/yolo-llm-vision/sidecar/models:/models
-    environment:
-      - YOLO_MODEL=yolov8n.pt
-      - CONFIDENCE_THRESHOLD=0.5
-    restart: unless-stopped
-```
+If you run HA in Docker without add-ons, run the sidecar separately:
 
 ```bash
-docker compose up -d
-```
-
-Sidecar URL depends on your HA network mode:
-
-| HA network_mode | Sidecar URL |
-|---|---|
-| `host` | `http://localhost:8000` |
-| bridge (default) | `http://yolo-sidecar:8000` |
-
-#### Standalone Compose File
-
-```bash
-cd yolo-llm-vision/sidecar
+cd sidecar
 cp .env.example .env
 docker compose up -d
 ```
 
-If HA and the sidecar are in different compose files on the same machine,
-create a shared Docker network so they can find each other:
+See [sidecar.md](sidecar.md) for API details and environment variables.
 
-```bash
-docker network create ha-network
-```
+**Sidecar URL from HA:** use the Docker service name (e.g. `http://yolo-sidecar:8000`) or the host IP — not `localhost` from inside the HA container.
 
-Add `networks: [ha-network]` to both compose files (under each service and
-as a top-level `networks:` block with `external: true`). Then use
-`http://yolo-sidecar:8000`.
+## Step 2: Install the Integration (HACS)
 
-### Verify the Sidecar
+1. Go to **HACS > Integrations**
+2. Open the three-dot menu (⋮) → **Custom repositories**
+3. **Repository:** `https://github.com/lauritssn/yolo-llm-vision`
+4. **Type:** **Integration** → **Add**
+5. Go to **HACS > Integrations** → **Explore & Download** → search **YOLO + LLM Vision** → **Download**
+6. **Restart Home Assistant**
+7. Go to **Settings > Devices & Services > Add Integration**, search for **YOLO + LLM Vision**
 
-From the HA host or from the add-on log tab:
+### Manual install (no HACS)
 
-```bash
-curl http://localhost:8000/health
-# {"status":"ok","model":"yolov8n.pt"}
-
-curl http://localhost:8000/classes
-# {"classes":["person","bicycle","car",...]}
-```
-
-## Step 2: Install the Integration via HACS
-
-1. Open Home Assistant and go to **HACS > Integrations**
-2. Click the three-dot menu (⋮) > **Custom repositories**
-3. **Repository:** enter `https://github.com/lauritssn/yolo-llm-vision`
-4. **Type:** select **Integration**
-5. Click **Add**, then close the dialog
-6. Go to **HACS > Integrations** → **Explore & Download** (or the **+** button), search for **YOLO + LLM Vision**, then **Download**
-7. **Restart Home Assistant**
-8. Go to **Settings > Devices & Services > Add Integration**, search for **YOLO + LLM Vision**, and complete the configuration (see Step 3)
+Copy `custom_components/yolo_llm_vision/` to your HA `config/custom_components/` folder and restart.
 
 ## Step 3: Configure the Integration
 
-1. Go to **Settings > Devices & Services > Add Integration**
-2. Search for "YOLO + LLM Vision"
-3. Fill in the settings:
+Adding the integration opens a **four-step wizard**. You can reopen **Configure** on the integration card anytime to edit one section.
+
+### Sidecar
 
 | Setting | What to enter |
 |---|---|
-| Sidecar URL | See the URL table above for your setup |
-| Cameras | Select camera entities to monitor |
-| Confidence threshold | 0.6 is a good starting point |
-| Detection classes | Pick objects to detect: person, dog, car, etc. |
-| Draw bounding boxes | Toggle on for annotated snapshots |
-| Save annotated images | Toggle on to save to `/media` |
-| LLM Vision provider | Only shown if LLM Vision is installed — optional |
-| Notification service | e.g. `notify.mobile_app_phone` — optional |
+| Sidecar URL | See the URL table above |
 
-4. Click **Submit**
+### Cameras & detection
+
+| Setting | What to enter |
+|---|---|
+| Cameras | Camera entities to monitor |
+| Confidence threshold | 0.6 is a good starting point |
+| Detection classes | person, dog, car, truck, etc. |
+| Draw overlays | Light-green segmentation masks on snapshots |
+| Save annotated images | Saves to `/config/media/yolo_llm_vision/` |
+
+### AI threat analysis
+
+| Setting | What to enter |
+|---|---|
+| AI Task entity | e.g. `ai_task.openai_ai_task` |
+| AI Task name | Passed to `ai_task.generate_data` |
+| Threat analysis prompt | Full instructions for the AI (editable) |
+| Threat phrase | Text meaning “threat” in the reply (default: `THREAT DETECTED`) |
+| LLM Vision provider | Optional fallback if AI Task is not set |
+
+When configured, the integration runs: snapshot → RF-DETR gate → AI Task analysis → threat or all-clear notification. You do **not** need the blueprint for this.
+
+### Notifications
+
+| Setting | What to enter |
+|---|---|
+| Notify service | e.g. `telegram_bot.send_message` or `notify.mobile_app_phone` |
+| Notify on threat | Send when AI includes the threat phrase |
+| Notify on all clear | Send when AI runs but no threat is found |
+| Threat / all-clear titles | Notification title prefixes |
+| Attach photo | Sends annotated snapshot via Telegram when enabled |
 
 ## Step 4: Import the Blueprint (Optional)
 
-For the full security pipeline (YOLO gate + AI analysis + Telegram):
+Use the blueprint only if you want the same pipeline inside a **custom automation** instead of the built-in integration flow.
 
 1. Go to **Settings > Automations & Scenes > Blueprints**
 2. Click **Import Blueprint**
@@ -194,19 +145,17 @@ For the full security pipeline (YOLO gate + AI analysis + Telegram):
    https://github.com/lauritssn/yolo-llm-vision/blob/main/blueprints/automation/yolo_llm_vision/camera_event_pipeline.yaml
    ```
 
-See [blueprint.md](blueprint.md) for how to configure the blueprint inputs.
+See [blueprint.md](blueprint.md) for blueprint inputs.
 
 ## Changing Settings
 
-### Integration Settings
+### Integration settings
 
-**Settings > Devices & Services** > find YOLO + LLM Vision > **Configure**
+**Settings > Devices & Services** → YOLO + LLM Vision → **Configure** → pick a section (Sidecar, Cameras, AI analysis, Notifications).
 
-Reconfiguring the integration updates detection classes and other options (e.g. if new defaults are released).
+### Add-on settings (HAOS only)
 
-### Add-on Settings (HAOS Only)
-
-**Settings > Add-ons** > YOLO Object Detection > **Configuration** tab
+**Settings > Add-ons** → **RF-DETR Segmentation** → **Configuration** tab (model size, default threshold, log level).
 
 ## Testing
 
@@ -216,16 +165,20 @@ Reconfiguring the integration updates detection classes and other options (e.g. 
 2. Select `yolo_llm_vision.analyze`
 3. Enter a camera entity ID
 4. Click **Call Service**
-5. Check the response and entity states
+5. Check the response for `detected`, `ai_analysis`, and `threat_detected`
 
-### Direct API Test
+### Try page (no Home Assistant)
+
+With the sidecar running, open `http://<sidecar-host>:8000/try` in a browser.
+
+### Direct API test
 
 ```bash
-IMAGE_B64=$(base64 -i test_image.jpg)
+IMAGE_B64=$(base64 -i tests/fixtures/images/bus.jpg)
 
 curl -X POST http://localhost:8000/detect \
   -H "Content-Type: application/json" \
-  -d "{\"image_base64\": \"$IMAGE_B64\", \"classes\": [\"person\", \"dog\"]}"
+  -d "{\"image_base64\": \"$IMAGE_B64\", \"classes\": [\"person\", \"bus\"]}"
 ```
 
 ## Troubleshooting
@@ -234,32 +187,21 @@ curl -X POST http://localhost:8000/detect \
 
 Check the add-on **Log** tab. Common issues:
 
-- **Out of memory**: The YOLO model needs RAM. `yolov8n.pt` needs ~300 MB;
-  larger models need more. Ensure your QNAP VM has enough memory allocated.
-- **Build failed / takes very long**: The first build downloads a Debian base image and PyTorch (several hundred MB). It can take **5–15 minutes** (longer on aarch64). Let it finish; later updates are faster.
+- **Out of memory**: RF-DETR Nano needs roughly 1–2 GB RAM during inference. Use `nano` on low-memory systems.
+- **Build failed / takes very long**: First build downloads PyTorch and model weights. Let it finish; later updates are faster.
 
 ### "Connection refused" in integration setup
 
-The sidecar URL is wrong or the container is not running.
+The sidecar URL is wrong or the container is not running. Try each URL from the table above.
 
-On HAOS, try each URL from the table above. The internal hostname depends on
-how the Supervisor names the container.
-
-On Docker, remember that `localhost` from inside the HA container is the
-container itself, not the host. Use the container name or host IP.
+On Docker HA, `localhost` inside the HA container is not the host — use the sidecar container name or host IP.
 
 ### Slow detection
 
-- Use `yolov8n.pt` (fastest model)
-- QNAP NAS CPUs are typically Intel Celeron/Atom — expect 50–150ms per frame
-- If your QNAP has an NVIDIA GPU (unlikely for most models), enable GPU in the
-  sidecar config
+- Use add-on model preset `nano`
+- CPU-only NAS hardware often sees 50–200 ms per frame — still faster than cloud APIs
 
-### Debug logging (service returns `error: true`)
-
-To see exactly where the integration fails (e.g. no HTTP request reaching the sidecar), enable debug logging:
-
-1. In `configuration.yaml` add:
+### Debug logging
 
 ```yaml
 logger:
@@ -268,22 +210,11 @@ logger:
     custom_components.yolo_llm_vision: debug
 ```
 
-2. Restart Home Assistant.
-3. Call the `yolo_llm_vision.analyze` service again.
-4. Check **Settings > System > Logs** (or your HA log file). You will see:
-   - When the service is called and with what data
-   - The sidecar URL from config/options
-   - Whether a config entry is loaded
-   - Snapshot fetch and size
-   - The exact sidecar URL, HTTP method, and payload size
-   - The raw HTTP response or full exception traceback if the request fails
-
-Use the last debug line before an exception to see where it failed (e.g. fetching snapshot vs. calling the sidecar).
+Restart HA, call `yolo_llm_vision.analyze`, then check **Settings > System > Logs**.
 
 ## Uninstalling
 
 1. Remove the integration from **Settings > Devices & Services**
-2. Stop/uninstall the add-on from **Settings > Add-ons** (HAOS)
-   — or `docker compose down` (Docker)
+2. Stop/uninstall the add-on (HAOS) or `docker compose down` (Docker)
 3. Uninstall from HACS
 4. Restart Home Assistant
