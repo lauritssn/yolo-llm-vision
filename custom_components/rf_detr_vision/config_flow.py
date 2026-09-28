@@ -292,7 +292,7 @@ class RfDetrVisionOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         if user_input is not None:
             step = user_input["next_step"]
-            return getattr(self, f"async_step_{step}")()
+            return await getattr(self, f"async_step_{step}")()
         return self.async_show_form(
             step_id=STEP_INIT,
             data_schema=vol.Schema(
