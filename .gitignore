@@ -6,8 +6,9 @@ build/
 .venv/
 .env
 
-# YOLO model weights — do not commit (downloaded or custom)
+# Model weights — do not commit (downloaded or custom)
 *.pt
+*.pth
 *.onnx
 *.engine
 sidecar/models/

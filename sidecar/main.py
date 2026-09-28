@@ -1,4 +1,4 @@
-"""YOLO object-detection sidecar — FastAPI + YOLOv8."""
+"""RF-DETR instance-segmentation sidecar — FastAPI + Roboflow RF-DETR-Seg."""
 
 from __future__ import annotations
 
@@ -15,86 +15,125 @@ from typing import Any
 import cv2
 import httpx
 import numpy as np
+import supervision as sv
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, model_validator
-from ultralytics import YOLO
+from rfdetr import (
+    RFDETRSegLarge,
+    RFDETRSegMedium,
+    RFDETRSegNano,
+    RFDETRSegSmall,
+    from_checkpoint,
+)
+from rfdetr.assets.coco_classes import COCO_CLASSES
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("yolo_sidecar")
+logger = logging.getLogger("rfdetr_sidecar")
 
-YOLO_MODEL = os.getenv("YOLO_MODEL", "yolov8n.pt")
+RFDETR_MODEL = os.getenv("RFDETR_MODEL", "nano").lower()
+RFDETR_CHECKPOINT = os.getenv("RFDETR_CHECKPOINT", "")
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.5"))
-MODELS_DIR = Path("/models")
+MODELS_DIR = Path(os.getenv("MODELS_DIR", "/models"))
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 PORT = int(os.getenv("PORT", "8000"))
 
-# COCO-80 class name lookup (standard YOLOv8)
-COCO_NAMES: dict[int, str] = {
-    0: "person", 1: "bicycle", 2: "car", 3: "motorcycle", 4: "airplane",
-    5: "bus", 6: "train", 7: "truck", 8: "boat", 9: "traffic light",
-    10: "fire hydrant", 11: "stop sign", 12: "parking meter", 13: "bench",
-    14: "bird", 15: "cat", 16: "dog", 17: "horse", 18: "sheep",
-    19: "cow", 20: "elephant", 21: "bear", 22: "zebra", 23: "giraffe",
-    24: "backpack", 25: "umbrella", 26: "handbag", 27: "tie", 28: "suitcase",
-    29: "frisbee", 30: "skis", 31: "snowboard", 32: "sports ball", 33: "kite",
-    34: "baseball bat", 35: "baseball glove", 36: "skateboard", 37: "surfboard",
-    38: "tennis racket", 39: "bottle", 40: "wine glass", 41: "cup", 42: "fork",
-    43: "knife", 44: "spoon", 45: "bowl", 46: "banana", 47: "apple",
-    48: "sandwich", 49: "orange", 50: "broccoli", 51: "carrot", 52: "hot dog",
-    53: "pizza", 54: "donut", 55: "cake", 56: "chair", 57: "couch",
-    58: "potted plant", 59: "bed", 60: "dining table", 61: "toilet",
-    62: "tv", 63: "laptop", 64: "mouse", 65: "remote", 66: "keyboard",
-    67: "cell phone", 68: "microwave", 69: "oven", 70: "toaster", 71: "sink",
-    72: "refrigerator", 73: "book", 74: "clock", 75: "vase", 76: "scissors",
-    77: "teddy bear", 78: "hair drier", 79: "toothbrush",
-}
-COCO_NAME_TO_ID: dict[str, int] = {v: k for k, v in COCO_NAMES.items()}
+# RF-DETR COCO classes are 1-indexed; expose 0-indexed IDs in the API (COCO standard).
+COCO_NAMES: dict[int, str] = {idx - 1: name for idx, name in COCO_CLASSES.items()}
+COCO_NAME_TO_ID: dict[str, int] = {name: idx - 1 for idx, name in COCO_CLASSES.items()}
 
-BOX_COLORS: dict[str, tuple[int, int, int]] = {
-    "person": (0, 255, 0),
-    "dog": (255, 165, 0),
-    "car": (255, 0, 0),
-    "truck": (255, 0, 0),
+MODEL_CLASSES = {
+    "nano": RFDETRSegNano,
+    "small": RFDETRSegSmall,
+    "medium": RFDETRSegMedium,
+    "large": RFDETRSegLarge,
 }
-DEFAULT_BOX_COLOR = (0, 200, 255)
+
+# Light green overlay for all segmentation masks (BGR for OpenCV, RGB for supervision).
+LIGHT_GREEN = sv.Color(r=144, g=238, b=144)
+MASK_ANNOTATOR = sv.MaskAnnotator(
+    color=LIGHT_GREEN,
+    color_lookup=sv.ColorLookup.INDEX,
+    opacity=0.45,
+)
+BOX_ANNOTATOR = sv.BoxAnnotator(
+    color=LIGHT_GREEN,
+    color_lookup=sv.ColorLookup.INDEX,
+    thickness=2,
+)
 
 _executor = ThreadPoolExecutor(max_workers=4)
-_model: YOLO | None = None
+_model: Any | None = None
+_active_model_label: str = f"seg-{RFDETR_MODEL}"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ARG001
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(_executor, _load_model)
-    logger.info("Sidecar ready — model=%s, threshold=%.2f", YOLO_MODEL, CONFIDENCE_THRESHOLD)
+    logger.info(
+        "Sidecar ready — task=segmentation, model=%s, threshold=%.2f",
+        _active_model_label,
+        CONFIDENCE_THRESHOLD,
+    )
     yield
 
 
-def _load_model() -> YOLO:
-    global _model  # noqa: PLW0603
+def _load_model() -> Any:
+    global _model, _active_model_label  # noqa: PLW0603
     if _model is not None:
         return _model
-    model_path = MODELS_DIR / YOLO_MODEL if (MODELS_DIR / YOLO_MODEL).exists() else YOLO_MODEL
-    logger.info("Loading YOLO model: %s", model_path)
-    _model = YOLO(str(model_path))
+
+    if RFDETR_CHECKPOINT:
+        checkpoint_path = Path(RFDETR_CHECKPOINT)
+        if not checkpoint_path.is_absolute():
+            checkpoint_path = MODELS_DIR / RFDETR_CHECKPOINT
+        if checkpoint_path.is_file():
+            logger.info("Loading RF-DETR checkpoint: %s", checkpoint_path)
+            _model = from_checkpoint(str(checkpoint_path))
+            _active_model_label = checkpoint_path.name
+            logger.info("Checkpoint loaded successfully")
+            return _model
+        logger.warning("Checkpoint not found at %s, falling back to size preset", checkpoint_path)
+
+    model_cls = MODEL_CLASSES.get(RFDETR_MODEL, RFDETRSegNano)
+    logger.info("Loading RF-DETR-Seg preset: %s", RFDETR_MODEL)
+    _model = model_cls()
+    _active_model_label = f"seg-{RFDETR_MODEL}"
     logger.info("Model loaded successfully")
     return _model
 
 
 app = FastAPI(
-    title="YOLO Object Detection Sidecar",
-    version="2.0.6",
+    title="RF-DETR Segmentation Sidecar",
+    version="2.2.0",
     lifespan=lifespan,
 )
+
+if STATIC_DIR.is_dir():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 @app.get("/")
 async def root() -> dict[str, str]:
     """Root route to avoid 404 when hitting the sidecar base URL."""
     return {
-        "service": "YOLO sidecar",
+        "service": "RF-DETR segmentation sidecar",
+        "task": "segmentation",
+        "try": "/try",
         "docs": "/docs",
         "health": "/health",
     }
+
+
+@app.get("/try")
+async def try_demo() -> FileResponse:
+    """Interactive demo page for testing segmentation on sample images."""
+    page = STATIC_DIR / "try.html"
+    if not page.is_file():
+        raise HTTPException(status_code=404, detail="Demo page not found")
+    return FileResponse(page, media_type="text/html")
 
 
 class DetectRequest(BaseModel):
@@ -122,7 +161,7 @@ class DetectRequest(BaseModel):
 async def _fetch_image_bytes(req: DetectRequest) -> bytes:
     if req.image_base64:
         return base64.b64decode(req.image_base64)
-    async with httpx.AsyncClient(timeout=30.0, verify=False) as client:  # noqa: S501
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, verify=False) as client:  # noqa: S501
         if req.entity_id:
             url = f"{req.ha_url.rstrip('/')}/api/camera_proxy/{req.entity_id}"
             headers = {"Authorization": f"Bearer {req.ha_token}"}
@@ -135,7 +174,7 @@ async def _fetch_image_bytes(req: DetectRequest) -> bytes:
 
 
 def _resolve_class_ids(class_names: list[str] | None) -> set[int] | None:
-    """Convert class name list to COCO class IDs. None = accept all."""
+    """Convert class name list to 0-indexed COCO class IDs. None = accept all."""
     if not class_names:
         return None
     ids: set[int] = set()
@@ -148,11 +187,63 @@ def _resolve_class_ids(class_names: list[str] | None) -> set[int] | None:
     return ids if ids else None
 
 
+def _mask_to_segment(mask: np.ndarray, img_height: int, img_width: int) -> dict[str, Any]:
+    """Convert a boolean mask to structured segment metadata."""
+    area_pixels = int(mask.sum())
+    total_pixels = img_height * img_width
+    area_percent = round(100.0 * area_pixels / total_pixels, 2) if total_pixels else 0.0
+
+    if area_pixels == 0:
+        return {
+            "area_pixels": 0,
+            "area_percent": 0.0,
+            "centroid": [0.0, 0.0],
+            "polygon": [],
+        }
+
+    ys, xs = np.where(mask)
+    if len(xs) == 0:
+        return {
+            "area_pixels": 0,
+            "area_percent": 0.0,
+            "centroid": [0.0, 0.0],
+            "polygon": [],
+        }
+
+    centroid = [round(float(xs.mean()), 1), round(float(ys.mean()), 1)]
+    polygon: list[list[float]] = []
+    mask_uint8 = (mask.astype(np.uint8) * 255)
+    contours, _ = cv2.findContours(mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if contours:
+        largest = max(contours, key=cv2.contourArea)
+        epsilon = 0.002 * cv2.arcLength(largest, True)
+        approx = cv2.approxPolyDP(largest, epsilon, True)
+        polygon = [[round(float(p[0][0]), 1), round(float(p[0][1]), 1)] for p in approx]
+
+    return {
+        "area_pixels": area_pixels,
+        "area_percent": area_percent,
+        "centroid": centroid,
+        "polygon": polygon,
+    }
+
+
+def _annotate_segmentation(img: np.ndarray, results: sv.Detections) -> np.ndarray:
+    """Draw instance segmentation masks, boxes, and labels on the image."""
+    labels = [
+        f"{COCO_NAMES.get(int(results.class_id[i]) - 1, f'class_{results.class_id[i]}')} {results.confidence[i]:.0%}"
+        for i in range(len(results))
+    ]
+    annotated = MASK_ANNOTATOR.annotate(img.copy(), results)
+    annotated = BOX_ANNOTATOR.annotate(annotated, results)
+    return sv.LabelAnnotator().annotate(annotated, results, labels)
+
+
 def _run_inference(
     image_bytes: bytes,
     threshold: float,
     allowed_class_ids: set[int] | None,
-    draw_boxes: bool,
+    draw_annotations: bool,
 ) -> dict[str, Any]:
     model = _load_model()
     nparr = np.frombuffer(image_bytes, np.uint8)
@@ -160,38 +251,42 @@ def _run_inference(
     if img is None:
         raise ValueError("Could not decode image")
 
+    img_height, img_width = img.shape[:2]
+
     t0 = time.perf_counter()
-    results = model(img, verbose=False)[0]
+    results = model.predict(img, threshold=threshold)
     inference_ms = (time.perf_counter() - t0) * 1000
 
+    kept_indices: list[int] = []
     detections: list[dict[str, Any]] = []
-    for box in results.boxes:
-        cls_id = int(box.cls[0])
-        conf = float(box.conf[0])
+    for i in range(len(results)):
+        cls_id_rfdetr = int(results.class_id[i])
+        cls_id = cls_id_rfdetr - 1  # 0-indexed for API compatibility
+        conf = float(results.confidence[i])
         if conf < threshold:
             continue
         if allowed_class_ids is not None and cls_id not in allowed_class_ids:
             continue
         class_name = COCO_NAMES.get(cls_id, f"class_{cls_id}")
-        x1, y1, x2, y2 = [float(c) for c in box.xyxy[0]]
+        x1, y1, x2, y2 = [round(float(c), 1) for c in results.xyxy[i]]
+        segment: dict[str, Any] | None = None
+        if results.mask is not None:
+            segment = _mask_to_segment(results.mask[i], img_height, img_width)
+
+        kept_indices.append(i)
         detections.append({
+            "id": len(detections),
             "class": class_name,
             "class_id": cls_id,
             "confidence": round(conf, 4),
             "bbox": [x1, y1, x2, y2],
+            "segment": segment,
         })
 
     annotated_b64: str | None = None
-    if draw_boxes and detections:
-        annotated = img.copy()
-        for det in detections:
-            bx1, by1, bx2, by2 = [int(c) for c in det["bbox"]]
-            color = BOX_COLORS.get(det["class"], DEFAULT_BOX_COLOR)
-            cv2.rectangle(annotated, (bx1, by1), (bx2, by2), color, 2)
-            label = f"{det['class']} {det['confidence']:.0%}"
-            (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
-            cv2.rectangle(annotated, (bx1, by1 - th - 8), (bx1 + tw, by1), color, -1)
-            cv2.putText(annotated, label, (bx1, by1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1)
+    if draw_annotations and kept_indices:
+        filtered = results[kept_indices]
+        annotated = _annotate_segmentation(img, filtered)
         _, buf = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 85])
         annotated_b64 = base64.b64encode(buf.tobytes()).decode("ascii")
 
@@ -206,6 +301,15 @@ def _run_inference(
         "confidence_avg": round(sum(confidences) / len(confidences), 4) if confidences else 0.0,
         "detections": detections,
         "inference_time_ms": round(inference_ms, 1),
+        "task": "segmentation",
+        "model": {
+            "engine": "rf-detr-seg",
+            "preset": _active_model_label,
+        },
+        "image": {
+            "width": img_width,
+            "height": img_height,
+        },
     }
     if annotated_b64:
         result["annotated_image_base64"] = annotated_b64
@@ -224,10 +328,11 @@ async def detect(req: DetectRequest) -> JSONResponse:
     threshold = req.confidence_threshold if req.confidence_threshold is not None else CONFIDENCE_THRESHOLD
     allowed_ids = _resolve_class_ids(req.classes)
 
+    loop = asyncio.get_running_loop()
     try:
-        # Run in main thread so torch/numpy are available (executor threads can hit
-        # "Numpy is not available" with torch 2.2 + numpy 2.x or thread init order).
-        result = _run_inference(image_bytes, threshold, allowed_ids, req.draw_boxes)
+        result = await loop.run_in_executor(
+            _executor, _run_inference, image_bytes, threshold, allowed_ids, req.draw_boxes
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
@@ -235,7 +340,7 @@ async def detect(req: DetectRequest) -> JSONResponse:
         raise HTTPException(status_code=500, detail=f"Inference error: {exc}") from exc
 
     logger.info(
-        "Detect: count=%d, classes=%s, conf_max=%.2f, time=%.0fms",
+        "Segment: count=%d, classes=%s, conf_max=%.2f, time=%.0fms",
         result["detection_count"],
         result["classes_detected"],
         result["confidence_max"],
@@ -246,15 +351,24 @@ async def detect(req: DetectRequest) -> JSONResponse:
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok", "model": YOLO_MODEL}
+    return {
+        "status": "ok",
+        "model": _active_model_label,
+        "engine": "rf-detr-seg",
+        "task": "segmentation",
+    }
 
 
 @app.get("/models")
 async def list_models() -> dict[str, Any]:
-    available: list[str] = []
-    if MODELS_DIR.exists():
-        available = sorted(f.name for f in MODELS_DIR.glob("*.pt"))
-    return {"active": YOLO_MODEL, "available": available}
+    available: list[str] = sorted(f.name for f in MODELS_DIR.glob("*.pt")) if MODELS_DIR.exists() else []
+    available += sorted(f.name for f in MODELS_DIR.glob("*.pth")) if MODELS_DIR.exists() else []
+    return {
+        "active": _active_model_label,
+        "task": "segmentation",
+        "presets": list(MODEL_CLASSES.keys()),
+        "checkpoints": sorted(set(available)),
+    }
 
 
 @app.get("/classes")
@@ -265,4 +379,5 @@ async def list_classes() -> dict[str, list[str]]:
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("main:app", host="0.0.0.0", port=PORT, reload=False)  # noqa: S104

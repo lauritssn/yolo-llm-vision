@@ -1,4 +1,4 @@
-"""Tests for sidecar pure logic and /health, /classes endpoints (no YOLO model)."""
+"""Tests for sidecar pure logic and /health, /classes endpoints (no RF-DETR model)."""
 
 from __future__ import annotations
 
@@ -16,13 +16,32 @@ SIDECAR = ROOT / "sidecar"
 if str(SIDECAR) not in sys.path:
     sys.path.insert(0, str(SIDECAR))
 
-_ultralytics = types.ModuleType("ultralytics")
-_ultralytics.YOLO = MagicMock(return_value=MagicMock())
+_rfdetr = types.ModuleType("rfdetr")
+_rfdetr.RFDETRSegNano = MagicMock(return_value=MagicMock())
+_rfdetr.RFDETRSegSmall = MagicMock(return_value=MagicMock())
+_rfdetr.RFDETRSegMedium = MagicMock(return_value=MagicMock())
+_rfdetr.RFDETRSegLarge = MagicMock(return_value=MagicMock())
+_rfdetr.from_checkpoint = MagicMock(return_value=MagicMock())
+
+_coco = types.ModuleType("rfdetr.assets.coco_classes")
+_coco.COCO_CLASSES = {i + 1: name for i, name in enumerate([
+    "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck",
+    "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench",
+    "bird", "cat", "dog",
+])}
+
+_sv = MagicMock()
 _cv2 = MagicMock()
 _numpy = MagicMock()
 with patch.dict(
     sys.modules,
-    {"ultralytics": _ultralytics, "cv2": _cv2, "numpy": _numpy},
+    {
+        "rfdetr": _rfdetr,
+        "rfdetr.assets.coco_classes": _coco,
+        "supervision": _sv,
+        "cv2": _cv2,
+        "numpy": _numpy,
+    },
 ):
     import main as sidecar_main  # noqa: E402
 
@@ -94,9 +113,20 @@ def test_root_endpoint() -> None:
     resp = client.get("/")
     assert resp.status_code == 200
     data = resp.json()
-    assert data.get("service") == "YOLO sidecar"
+    assert "segmentation" in data.get("service", "")
+    assert data.get("task") == "segmentation"
+    assert data.get("try") == "/try"
     assert data.get("docs") == "/docs"
     assert data.get("health") == "/health"
+
+
+def test_try_demo_page() -> None:
+    """GET /try serves the interactive demo HTML."""
+    client = TestClient(sidecar_main.app)
+    resp = client.get("/try")
+    assert resp.status_code == 200
+    assert "text/html" in resp.headers.get("content-type", "")
+    assert "Try RF-DETR Segmentation" in resp.text
 
 
 def test_health_endpoint() -> None:
@@ -105,6 +135,8 @@ def test_health_endpoint() -> None:
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "ok"
+    assert data["engine"] == "rf-detr-seg"
+    assert data["task"] == "segmentation"
     assert "model" in data
 
 
@@ -117,3 +149,12 @@ def test_classes_endpoint() -> None:
     assert isinstance(data["classes"], list)
     assert "person" in data["classes"]
     assert "dog" in data["classes"]
+
+
+def test_mask_to_segment_empty_mask() -> None:
+    import numpy as real_np
+
+    segment = sidecar_main._mask_to_segment(real_np.zeros((10, 10), dtype=bool), 10, 10)
+    assert segment["area_pixels"] == 0
+    assert segment["polygon"] == []
+

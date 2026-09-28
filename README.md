@@ -1,6 +1,6 @@
 # YOLO + LLM Vision — HACS Integration
 
-Local object detection for Home Assistant cameras using a YOLOv8 Docker sidecar. Detects people, animals, vehicles and more — only calls expensive AI analysis when something relevant is actually there.
+Local object detection for Home Assistant cameras using a [Roboflow RF-DETR](https://github.com/roboflow/rf-detr) sidecar. Detects people, animals, vehicles and more — only calls expensive AI analysis when something relevant is actually there.
 
 ## How It Works
 
@@ -9,8 +9,8 @@ Camera Motion
      │
      ▼
 ┌──────────┐     ┌──────────────┐     ┌─────────────────┐
-│  Camera   │────▶│ YOLO Sidecar │────▶│ Detection Result │
-│ Snapshot  │     │ (local, free)│     │ person, dog, car │
+│  Camera   │────▶│ RF-DETR Sidecar│──▶│ Detection Result │
+│ Snapshot  │     │ (local, free)  │   │ person, dog, car │
 └──────────┘     └──────────────┘     └────────┬────────┘
                                                 │
                                      ┌──────────┴──────────┐
@@ -29,17 +29,17 @@ Camera Motion
                                      └────────────┘
 ```
 
-**The YOLO sidecar runs locally — zero API costs.** The expensive AI call (OpenAI, LLM Vision, etc.) only runs when YOLO confirms a relevant detection. Empty frames, cats, and birds are filtered out before they cost you anything.
+**The RF-DETR sidecar runs locally — zero API costs.** The expensive AI call (OpenAI, LLM Vision, etc.) only runs when RF-DETR confirms a relevant detection. Empty frames, cats, and birds are filtered out before they cost you anything.
 
 ## Quick Start
 
-### 1. Install the YOLO Sidecar
+### 1. Install the RF-DETR Sidecar
 
 **Home Assistant OS** (QNAP VM, Raspberry Pi, etc.) — install as an add-on:
 
 1. **Settings > Add-ons > Add-on Store** > three-dot menu (⋮) > **Repositories**
 2. Add repository URL: `https://github.com/lauritssn/yolo-llm-vision` → **Add** → **Close**
-3. In the Add-on Store, find **YOLO Object Detection** → **Install**
+3. In the Add-on Store, find **RF-DETR Object Detection** → **Install**
 4. Open the add-on → **Start**
 
 The first install can take several minutes (image build and model download). Wait until the add-on **Log** shows “Sidecar ready” before configuring the integration.
@@ -67,17 +67,49 @@ See [docs/setup.md](docs/setup.md) for full details on both methods.
 
 ### 3. Configure
 
-Go to **Settings > Devices & Services > Add Integration > YOLO + LLM Vision**.
+Go to **Settings > Devices & Services > Add Integration > YOLO + LLM Vision**. Setup is a four-step wizard; reopen **Configure** on the integration anytime to edit a section.
+
+**Sidecar**
 
 | Setting | Description |
 |---|---|
 | Sidecar URL | `http://<your-host>:8000` |
-| Cameras | Select one or more camera entities |
-| Confidence threshold | Minimum confidence to trigger (default: 0.6) |
-| Detection classes | Which objects to detect: person, dog, car, etc. |
-| Draw bounding boxes | Overlay colored boxes on detections |
 
-### 4. Import the Blueprint
+**Cameras & detection**
+
+| Setting | Description |
+|---|---|
+| Cameras | One or more camera entities to monitor |
+| Confidence threshold | Minimum confidence to trigger (default: 0.6) |
+| Detection classes | COCO classes that pass the gate (person, dog, car, …) |
+| Draw overlays | Segmentation masks on saved snapshots |
+| Save annotated images | Write snapshots to `/config/media/yolo_llm_vision/` |
+
+**AI threat analysis**
+
+| Setting | Description |
+|---|---|
+| AI Task entity | e.g. `ai_task.openai_ai_task` (ChatGPT via Home Assistant AI Task) |
+| AI Task name | Task name passed to `ai_task.generate_data` |
+| Threat analysis prompt | Instructions for the AI (editable; default matches the blueprint) |
+| Threat phrase | Text that means “threat” in the AI reply (default: `THREAT DETECTED`) |
+| LLM Vision provider | Optional fallback if AI Task is not configured |
+
+**Notifications**
+
+| Setting | Description |
+|---|---|
+| Notify service | e.g. `telegram_bot.send_message` or `notify.mobile_app_phone` |
+| Notify on threat | Send when AI includes the threat phrase (or on detection-only if AI is off) |
+| Notify on all clear | Send when AI runs but no threat phrase is found |
+| Threat / all-clear titles | Prefix for notification titles |
+| Attach photo | Sends annotated snapshot via Telegram when enabled |
+
+When configured, the integration runs the full pipeline itself: camera snapshot → RF-DETR gate → AI Task threat analysis → threat or all-clear notification. The blueprint below is optional if you prefer automations.
+
+### 4. Import the Blueprint (optional)
+
+If you use the integration configuration above, you do not need the blueprint. Use it when you want the same pipeline inside a custom automation instead.
 
 Go to **Settings → Automations → Blueprints → Import Blueprint** and paste:
 
@@ -204,8 +236,11 @@ A: No. The blueprint uses `ai_task.generate_data` which works with any AI Task p
 **Q: Can I use this without AI analysis at all?**
 A: Yes. Leave the AI Task entity empty in the blueprint and you get YOLO-only detection with Telegram notifications showing what was detected.
 
-**Q: How fast is the YOLO detection?**
-A: 5–30ms on GPU, 30–120ms on CPU depending on the model size. Much faster than any cloud API call.
+**Q: How fast is RF-DETR detection?**
+A: RF-DETR Nano runs in ~2–30ms on GPU and ~50–200ms on CPU depending on hardware. Much faster than any cloud API call.
+
+**Q: Can I try detection without Home Assistant?**
+A: Yes. Start the sidecar and open `http://localhost:8000/try` for an interactive demo with sample images.
 
 ## Development & testing
 

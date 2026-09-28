@@ -9,15 +9,15 @@ read_options() {
     python3 -c "
 import json
 o = json.load(open('/data/options.json'))
-m = o.get('model', 'yolov8n.pt')
+m = o.get('model', 'nano')
 c = o.get('confidence_threshold', 0.5)
 l = o.get('log_level', 'info')
-print(f'export YOLO_MODEL=\"{m}\"')
+print(f'export RFDETR_MODEL=\"{m}\"')
 print(f'export CONFIDENCE_THRESHOLD=\"{c}\"')
 print(f'export LOG_LEVEL=\"{l}\"')
 "
   else
-    echo 'export YOLO_MODEL="yolov8n.pt"'
+    echo 'export RFDETR_MODEL="nano"'
     echo 'export CONFIDENCE_THRESHOLD="0.5"'
     echo 'export LOG_LEVEL="info"'
   fi
@@ -25,5 +25,5 @@ print(f'export LOG_LEVEL=\"{l}\"')
 
 eval "$(read_options)"
 
-echo "[INFO] Starting YOLO sidecar — model=${YOLO_MODEL}, threshold=${CONFIDENCE_THRESHOLD}"
+echo "[INFO] Starting RF-DETR segmentation sidecar — model=${RFDETR_MODEL}, threshold=${CONFIDENCE_THRESHOLD}"
 exec python3 /app/main.py

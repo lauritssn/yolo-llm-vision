@@ -1,8 +1,8 @@
-name: YOLO Object Detection
-version: "2.0.6"
+name: RF-DETR Segmentation
+version: "2.2.0"
 slug: yolo_sidecar
 description: >-
-  Local YOLOv8 object detection sidecar for the YOLO + LLM Vision integration.
+  Local RF-DETR instance segmentation sidecar for the YOLO + LLM Vision integration.
   Detects people, animals, vehicles, and other objects in camera images.
   Runs entirely locally — no cloud API costs.
   Installation and first start may take several minutes (image build and model download).
@@ -20,18 +20,18 @@ arch:
 ports:
   8000/tcp: 8000
 ports_description:
-  8000/tcp: "YOLO detection API"
+  8000/tcp: "RF-DETR segmentation API"
 
 map:
   - media:rw
 
 options:
-  model: "yolov8n.pt"
+  model: "nano"
   confidence_threshold: 0.5
   log_level: "info"
 
 schema:
-  model: "str"
+  model: "list(nano|small|medium|large)"
   confidence_threshold: "float(0.1,1.0)"
   log_level: "list(debug|info|warning|error)"
 
