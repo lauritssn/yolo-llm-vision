@@ -38,7 +38,7 @@ Camera Motion
 **Home Assistant OS** (QNAP VM, Raspberry Pi, etc.) — install as an add-on:
 
 1. **Settings > Add-ons > Add-on Store** > three-dot menu (⋮) > **Repositories**
-2. Add repository URL: `https://github.com/lauritssn/rf-detr-vision` → **Add** → **Close**
+2. Add repository URL: `https://github.com/lauritssn/yolo-llm-vision` → **Add** → **Close**
 3. In the Add-on Store, find **RF-DETR Segmentation** → **Install**
 4. Open the add-on → **Start**
 
@@ -58,7 +58,7 @@ See [docs/setup.md](docs/setup.md) for full details on both methods.
 
 1. Go to **HACS > Integrations**
 2. Open the three-dot menu (⋮) → **Custom repositories**
-3. **Repository:** `https://github.com/lauritssn/rf-detr-vision`
+3. **Repository:** `https://github.com/lauritssn/yolo-llm-vision`
 4. **Type:** **Integration**
 5. Click **Add**
 6. In HACS, go to **Integrations** → **Explore & Download** (or **+**), search for **RF-DETR + LLM Vision** → **Download**
@@ -114,8 +114,10 @@ If you use the integration configuration above, you do not need the blueprint. U
 Go to **Settings → Automations → Blueprints → Import Blueprint** and paste:
 
 ```
-https://github.com/lauritssn/rf-detr-vision/blob/main/blueprints/automation/rf_detr_vision/camera_event_pipeline.yaml
+https://raw.githubusercontent.com/lauritssn/yolo-llm-vision/main/blueprints/automation/rf_detr_vision/camera_event_pipeline.yaml
 ```
+
+(GitHub repo name is still `yolo-llm-vision`; only the integration code inside uses RF-DETR naming.)
 
 Or copy the file to `config/blueprints/automation/rf_detr_vision/`.
 
@@ -237,11 +239,11 @@ Version **3.0.0** renames everything to match RF-DETR:
 | Service `yolo_llm_vision.analyze` | `rf_detr_vision.analyze` |
 | Add-on slug `yolo_sidecar` | `rf_detr_sidecar` |
 | Sidecar URL `http://local-yolo-sidecar:8000` | `http://local-rf-detr-sidecar:8000` |
-| HACS custom repo `…/yolo-llm-vision` | `…/rf-detr-vision` |
+| HACS custom repo | `https://github.com/lauritssn/yolo-llm-vision` (unchanged) |
 
 1. Remove the old **YOLO + LLM Vision** integration from HA.
 2. Uninstall the old **YOLO** add-on (if used).
-3. Update your HACS custom repository URL to `https://github.com/lauritssn/rf-detr-vision`.
+3. Keep HACS repo URL as `https://github.com/lauritssn/yolo-llm-vision`.
 4. Install **RF-DETR + LLM Vision** and the **RF-DETR Segmentation** add-on.
 5. Reconfigure cameras, AI Task, and notifications.
 6. Update automations: service `rf_detr_vision.analyze`, event `rf_detr_vision_detection`.

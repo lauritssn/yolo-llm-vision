@@ -9,7 +9,7 @@ blueprint:
     Requires the rf_detr_vision integration to be configured.
   domain: automation
   author: "RF-DETR + LLM Vision"
-  source_url: "https://github.com/lauritssn/rf-detr-vision/blob/main/blueprints/automation/rf_detr_vision/camera_event_pipeline.yaml"
+  source_url: "https://github.com/lauritssn/yolo-llm-vision/blob/main/blueprints/automation/rf_detr_vision/camera_event_pipeline.yaml"
 
   input:
     camera_entity:

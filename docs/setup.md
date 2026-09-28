@@ -29,7 +29,7 @@ On HAOS, the sidecar runs as a **Home Assistant add-on**.
 
 1. Go to **Settings > Add-ons > Add-on Store**
 2. Click the three-dot menu (top right) > **Repositories**
-3. Add: `https://github.com/lauritssn/rf-detr-vision`
+3. Add: `https://github.com/lauritssn/yolo-llm-vision`
 4. Click **Add** then **Close**
 5. Find **RF-DETR Segmentation** in the store and click **Install**
 6. **Important:** The first build can take **5–15 minutes** (image build and model download). Do not cancel.
@@ -82,7 +82,7 @@ See [sidecar.md](sidecar.md) for API details and environment variables.
 
 1. Go to **HACS > Integrations**
 2. Open the three-dot menu (⋮) → **Custom repositories**
-3. **Repository:** `https://github.com/lauritssn/rf-detr-vision`
+3. **Repository:** `https://github.com/lauritssn/yolo-llm-vision`
 4. **Type:** **Integration** → **Add**
 5. Go to **HACS > Integrations** → **Explore & Download** → search **RF-DETR + LLM Vision** → **Download**
 6. **Restart Home Assistant**
@@ -142,7 +142,7 @@ Use the blueprint only if you want the same pipeline inside a **custom automatio
 2. Click **Import Blueprint**
 3. Paste:
    ```
-   https://github.com/lauritssn/rf-detr-vision/blob/main/blueprints/automation/rf_detr_vision/camera_event_pipeline.yaml
+   https://github.com/lauritssn/yolo-llm-vision/blob/main/blueprints/automation/rf_detr_vision/camera_event_pipeline.yaml
    ```
 
 See [blueprint.md](blueprint.md) for blueprint inputs.

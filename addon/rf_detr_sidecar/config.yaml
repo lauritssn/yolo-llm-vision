@@ -6,7 +6,7 @@ description: >-
   Detects people, animals, vehicles, and other objects in camera images.
   Runs entirely locally — no cloud API costs.
   Installation and first start may take several minutes (image build and model download).
-url: "https://github.com/lauritssn/rf-detr-vision"
+url: "https://github.com/lauritssn/yolo-llm-vision"
 startup: application
 boot: auto
 host_network: false

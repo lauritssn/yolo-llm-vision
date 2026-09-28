@@ -59,9 +59,9 @@ Install the sidecar and integration first — see [Installation and Setup](setup
 
 1. Go to **Settings > Automations & Scenes > Blueprints**
 2. Click **Import Blueprint**
-3. Paste:
+3. Paste (use the **raw** URL — required for import):
    ```
-   https://github.com/lauritssn/rf-detr-vision/blob/main/blueprints/automation/rf_detr_vision/camera_event_pipeline.yaml
+   https://raw.githubusercontent.com/lauritssn/yolo-llm-vision/main/blueprints/automation/rf_detr_vision/camera_event_pipeline.yaml
    ```
 
 ### Manual Copy
