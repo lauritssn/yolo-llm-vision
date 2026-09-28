@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import logging
 from dataclasses import dataclass, field
@@ -44,11 +45,14 @@ from .const import (
     DEFAULT_NOTIFY_ON_THREAT,
     DEFAULT_PROMPT,
     DEFAULT_SIDECAR_URL,
+    DEFAULT_SNAPSHOT_DELAY,
     DEFAULT_THREAT_PHRASE,
     DEFAULT_THREAT_PROMPT,
     DEFAULT_THREAT_TITLE,
     DOMAIN,
+    DEFAULT_TEST_NOTIFICATION_PREFIX,
     EVENT_DETECTION,
+    EVENT_TEST_COMPLETE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -303,6 +307,7 @@ class RfDetrVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
                 classes=classes,
                 threat_detected=threat_detected,
                 image_path=cam.last_saved_image_path,
+                title_prefix="",
             )
 
             self.async_set_updated_data(dict(self._states))
@@ -323,6 +328,365 @@ class RfDetrVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
         self, entity_id: str, *, force_llm: bool = False
     ) -> dict[str, Any]:
         return await self.analyze_camera(entity_id, force_llm=force_llm)
+
+    async def test_pipeline(
+        self,
+        entity_id: str,
+        *,
+        send_notifications: bool = False,
+        bypass_detection_gate: bool = False,
+        force_ai: bool = True,
+        notification_prefix: str = DEFAULT_TEST_NOTIFICATION_PREFIX,
+        snapshot_delay_seconds: float = DEFAULT_SNAPSHOT_DELAY,
+        use_camera_snapshot: bool = True,
+    ) -> dict[str, Any]:
+        """Run a step-by-step pipeline test and return a structured report."""
+        camera_name = entity_id.split(".")[-1].replace("_", " ").title()
+        report: dict[str, Any] = {
+            "test": True,
+            "entity_id": entity_id,
+            "camera": camera_name,
+            "steps": {},
+            "ok": False,
+        }
+
+        health = await self._check_sidecar_health()
+        report["steps"]["sidecar_health"] = health
+        if not health.get("ok"):
+            report["summary"] = "Sidecar health check failed — fix sidecar URL or start the add-on."
+            await self._finalize_test_report(
+                entity_id, report, send_notifications, notification_prefix, None
+            )
+            return report
+
+        snapshot_path: str | None = None
+        try:
+            image_bytes, content_type, snapshot_meta = await self._grab_camera_frame(
+                entity_id,
+                snapshot_delay_seconds=snapshot_delay_seconds,
+                use_camera_snapshot=use_camera_snapshot,
+            )
+            snapshot_path = snapshot_meta.get("snapshot_path")
+            report["steps"]["snapshot"] = {
+                "ok": True,
+                "bytes": len(image_bytes),
+                "content_type": content_type,
+                **snapshot_meta,
+            }
+        except Exception as exc:
+            report["steps"]["snapshot"] = {"ok": False, "error": str(exc)}
+            report["summary"] = f"Could not grab camera snapshot: {exc}"
+            await self._finalize_test_report(
+                entity_id, report, send_notifications, notification_prefix, None
+            )
+            return report
+
+        try:
+            image_b64 = base64.b64encode(image_bytes).decode("ascii")
+            sidecar_result = await self._call_sidecar(image_b64)
+        except Exception as exc:
+            report["steps"]["detection"] = {"ok": False, "error": str(exc)}
+            report["summary"] = f"RF-DETR sidecar error: {exc}"
+            await self._finalize_test_report(
+                entity_id, report, send_notifications, notification_prefix, None
+            )
+            return report
+
+        detected = sidecar_result.get("detected", False)
+        conf_max = sidecar_result.get("confidence_max", 0.0)
+        classes = sidecar_result.get("classes_detected", [])
+        gate_passed = detected and conf_max >= self.confidence_threshold
+
+        report["steps"]["detection"] = {
+            "ok": True,
+            "detected": detected,
+            "confidence": conf_max,
+            "detection_count": sidecar_result.get("detection_count", 0),
+            "classes_detected": classes,
+            "inference_time_ms": sidecar_result.get("inference_time_ms", 0),
+            "threshold": self.confidence_threshold,
+            "gate_passed": gate_passed,
+        }
+        report["steps"]["detection_gate"] = {
+            "passed": gate_passed,
+            "bypassed": bypass_detection_gate,
+            "active": gate_passed or bypass_detection_gate,
+        }
+
+        continue_pipeline = gate_passed or bypass_detection_gate
+        ai_text: str | None = None
+        threat_detected: bool | None = None
+        notify_image_path: str | None = snapshot_path
+
+        annotated_b64 = sidecar_result.get("annotated_image_base64")
+        if annotated_b64 and self.save_annotated:
+            saved = await self._save_annotated_image(entity_id, annotated_b64)
+            if saved and not notify_image_path:
+                notify_image_path = str(saved)
+
+        if continue_pipeline and force_ai:
+            if self.ai_analysis_enabled:
+                ai_text = await self._run_ai_analysis(
+                    entity_id, snapshot_path=snapshot_path
+                )
+                if ai_text is not None:
+                    threat_detected = self.threat_phrase in ai_text
+                report["steps"]["ai_task"] = {
+                    "ok": ai_text is not None,
+                    "ran": True,
+                    "entity": self.ai_task_entity or self.llm_provider,
+                    "threat_detected": threat_detected,
+                    "response_preview": (ai_text or "")[:500],
+                }
+            else:
+                report["steps"]["ai_task"] = {
+                    "ok": False,
+                    "ran": False,
+                    "reason": "No AI Task entity or LLM Vision provider configured",
+                }
+        elif not continue_pipeline:
+            report["steps"]["ai_task"] = {
+                "ok": True,
+                "ran": False,
+                "skipped": True,
+                "reason": (
+                    "Detection gate closed — nothing relevant detected. "
+                    "Stand in view of the camera or set bypass_detection_gate: true."
+                ),
+            }
+        else:
+            report["steps"]["ai_task"] = {
+                "ok": True,
+                "ran": False,
+                "skipped": True,
+                "reason": "force_ai is false",
+            }
+
+        notification_step: dict[str, Any] = {
+            "configured": bool(self.notify_service),
+            "service": self.notify_service or None,
+            "sent": False,
+        }
+        if send_notifications and self.notify_service:
+            if continue_pipeline:
+                sent = await self._maybe_send_notifications(
+                    entity_id=entity_id,
+                    ai_text=ai_text,
+                    confidence=conf_max,
+                    classes=classes,
+                    threat_detected=threat_detected,
+                    image_path=notify_image_path,
+                    title_prefix=notification_prefix,
+                )
+                notification_step["production_style_sent"] = sent
+            summary_sent = await self._send_test_summary_notification(
+                entity_id=entity_id,
+                report=report,
+                prefix=notification_prefix,
+                image_path=notify_image_path,
+            )
+            notification_step["sent"] = bool(
+                notification_step.get("production_style_sent") or summary_sent
+            )
+            notification_step["test_summary_sent"] = summary_sent
+        elif send_notifications:
+            notification_step["reason"] = "No notify_service configured in integration"
+        else:
+            notification_step["reason"] = "send_notifications is false (dry run)"
+
+        report["steps"]["notification"] = notification_step
+        report["detected"] = detected
+        report["confidence"] = conf_max
+        report["classes_detected"] = classes
+        if ai_text:
+            report["ai_analysis"] = ai_text
+            report["threat_detected"] = threat_detected
+
+        report["ok"] = (
+            health.get("ok")
+            and report["steps"]["snapshot"].get("ok")
+            and report["steps"]["detection"].get("ok")
+            and (
+                not send_notifications
+                or notification_step.get("sent")
+                or not self.notify_service
+            )
+        )
+        report["summary"] = self._build_test_summary(report)
+        await self._finalize_test_report(
+            entity_id, report, send_notifications, notification_prefix, notify_image_path
+        )
+        return report
+
+    async def _finalize_test_report(
+        self,
+        entity_id: str,
+        report: dict[str, Any],
+        send_notifications: bool,
+        notification_prefix: str,
+        image_path: str | None,
+    ) -> None:
+        if send_notifications and "notification" not in report.get("steps", {}):
+            sent = await self._send_test_summary_notification(
+                entity_id, report, notification_prefix, image_path
+            )
+            report.setdefault("steps", {})["notification"] = {
+                "configured": bool(self.notify_service),
+                "service": self.notify_service or None,
+                "sent": sent,
+                "test_summary_sent": sent,
+            }
+        self.hass.bus.async_fire(EVENT_TEST_COMPLETE, report)
+        _LOGGER.info(
+            "Pipeline test for %s (notify=%s): %s",
+            report.get("entity_id"),
+            send_notifications,
+            report.get("summary"),
+        )
+
+    @staticmethod
+    def _build_test_summary(report: dict[str, Any]) -> str:
+        steps = report.get("steps", {})
+        lines = [f"Pipeline test — {report.get('camera', 'camera')}"]
+
+        health = steps.get("sidecar_health", {})
+        lines.append(
+            f"Sidecar: {'OK' if health.get('ok') else 'FAIL'} ({health.get('url', 'n/a')})"
+        )
+
+        snapshot = steps.get("snapshot", {})
+        if snapshot.get("ok"):
+            method = snapshot.get("method", "unknown")
+            path = snapshot.get("snapshot_path")
+            if path:
+                lines.append(f"Snapshot: OK via {method} → {path}")
+            else:
+                lines.append(f"Snapshot: OK via {method} ({snapshot.get('bytes', 0)} bytes)")
+
+        detection = steps.get("detection", {})
+        if detection.get("ok"):
+            if detection.get("gate_passed"):
+                lines.append(
+                    "RF-DETR: detected "
+                    f"{', '.join(detection.get('classes_detected') or [])} "
+                    f"({detection.get('confidence', 0):.0%})"
+                )
+            else:
+                lines.append("RF-DETR: no relevant detection above threshold")
+        elif detection:
+            lines.append(f"RF-DETR: error — {detection.get('error', 'unknown')}")
+
+        ai_step = steps.get("ai_task", {})
+        if ai_step.get("ran"):
+            status = "OK" if ai_step.get("ok") else "FAIL"
+            threat = ai_step.get("threat_detected")
+            threat_label = (
+                "threat" if threat else "all clear" if threat is False else "n/a"
+            )
+            lines.append(f"AI Task: {status} ({threat_label})")
+        elif ai_step.get("skipped"):
+            lines.append(f"AI Task: skipped — {ai_step.get('reason', '')}")
+
+        notify = steps.get("notification", {})
+        if notify.get("sent"):
+            lines.append(f"Notify: sent via {notify.get('service')}")
+        elif notify.get("configured") is False:
+            lines.append("Notify: not configured")
+        else:
+            lines.append(f"Notify: {notify.get('reason', 'not sent')}")
+
+        return "\n".join(lines)
+
+    async def _send_test_summary_notification(
+        self,
+        entity_id: str,
+        report: dict[str, Any],
+        prefix: str,
+        image_path: str | None,
+    ) -> bool:
+        if not self.notify_service:
+            return False
+        camera_name = entity_id.split(".")[-1].replace("_", " ").title()
+        title = f"{prefix}Pipeline test — {camera_name}"
+        message = report.get("summary") or self._build_test_summary(report)
+        return await self._send_notification(
+            title=title,
+            message=message,
+            image_path=image_path if self.notify_include_photo else None,
+        )
+
+    async def _check_sidecar_health(self) -> dict[str, Any]:
+        url = f"{self.sidecar_url.rstrip('/')}/health"
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url)
+                body: dict[str, Any] = {}
+                if resp.is_success:
+                    try:
+                        parsed = resp.json()
+                        if isinstance(parsed, dict):
+                            body = parsed
+                    except Exception:
+                        body = {"raw": resp.text[:200]}
+                return {
+                    "ok": resp.status_code == 200,
+                    "status_code": resp.status_code,
+                    "url": url,
+                    "body": body,
+                }
+        except Exception as exc:
+            return {"ok": False, "url": url, "error": str(exc)}
+
+    async def _grab_camera_frame(
+        self,
+        entity_id: str,
+        *,
+        snapshot_delay_seconds: float = DEFAULT_SNAPSHOT_DELAY,
+        use_camera_snapshot: bool = True,
+    ) -> tuple[bytes, str, dict[str, Any]]:
+        """Grab a frame from the camera — same flow as the security blueprint."""
+        meta: dict[str, Any] = {}
+
+        if use_camera_snapshot:
+            snapshot_path = self._build_snapshot_path(entity_id, prefix="rf_detr_test")
+            meta["snapshot_path"] = snapshot_path
+            try:
+                await self.hass.services.async_call(
+                    "camera",
+                    "snapshot",
+                    {"entity_id": entity_id, "filename": snapshot_path},
+                    blocking=True,
+                )
+                meta["method"] = "camera.snapshot"
+                if snapshot_delay_seconds > 0:
+                    meta["delay_seconds"] = snapshot_delay_seconds
+                    await asyncio.sleep(snapshot_delay_seconds)
+
+                image_bytes = await self.hass.async_add_executor_job(
+                    Path(snapshot_path).read_bytes
+                )
+                if not image_bytes:
+                    raise ValueError(f"Snapshot file is empty: {snapshot_path}")
+                meta["bytes"] = len(image_bytes)
+                return image_bytes, "image/jpeg", meta
+            except Exception as exc:
+                meta["snapshot_error"] = str(exc)
+                _LOGGER.warning(
+                    "camera.snapshot failed for %s, falling back to live frame: %s",
+                    entity_id,
+                    exc,
+                )
+
+        image = await async_get_image(self.hass, entity_id)
+        meta["method"] = "async_get_image"
+        meta["bytes"] = len(image.content)
+        return image.content, image.content_type, meta
+
+    @staticmethod
+    def _build_snapshot_path(entity_id: str, *, prefix: str) -> str:
+        stamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
+        safe_id = entity_id.replace(".", "_")
+        return f"/config/www/{prefix}_{safe_id}_{stamp}.jpg"
 
     # -- sidecar call ---------------------------------------------------------
 
@@ -352,16 +716,30 @@ class RfDetrVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
 
     # -- AI analysis ----------------------------------------------------------
 
-    async def _run_ai_analysis(self, entity_id: str) -> str | None:
+    async def _run_ai_analysis(
+        self, entity_id: str, *, snapshot_path: str | None = None
+    ) -> str | None:
         if self.ai_task_enabled:
-            text = await self._call_ai_task(entity_id)
+            text = await self._call_ai_task(entity_id, snapshot_path=snapshot_path)
             if text:
                 return text
         if self.llm_enabled:
             return await self._call_llm_vision(entity_id)
         return None
 
-    async def _call_ai_task(self, entity_id: str) -> str | None:
+    async def _call_ai_task(
+        self, entity_id: str, *, snapshot_path: str | None = None
+    ) -> str | None:
+        if snapshot_path:
+            attachment = {
+                "media_content_id": f"/local/{Path(snapshot_path).name}",
+                "media_content_type": "image/jpeg",
+            }
+        else:
+            attachment = {
+                "media_content_id": f"media-source://camera/{entity_id}",
+                "media_content_type": "image/jpeg",
+            }
         try:
             response = await self.hass.services.async_call(
                 "ai_task",
@@ -370,12 +748,7 @@ class RfDetrVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
                     "entity_id": self.ai_task_entity,
                     "task_name": self.ai_task_name,
                     "instructions": self.threat_prompt,
-                    "attachments": [
-                        {
-                            "media_content_id": f"media-source://camera/{entity_id}",
-                            "media_content_type": "image/jpeg",
-                        }
-                    ],
+                    "attachments": [attachment],
                 },
                 blocking=True,
                 return_response=True,
@@ -444,33 +817,34 @@ class RfDetrVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
         classes: list[str],
         threat_detected: bool | None,
         image_path: str | None,
-    ) -> None:
+        title_prefix: str = "",
+    ) -> bool:
         if not self.notify_service:
-            return
+            return False
 
         class_str = ", ".join(classes) if classes else "object"
         camera_name = entity_id.split(".")[-1].replace("_", " ").title()
 
         if threat_detected is None:
             if not self.notify_on_threat:
-                return
-            title = f"{self.threat_title} — {camera_name}"
+                return False
+            title = f"{title_prefix}{self.threat_title} — {camera_name}"
             message = (
                 f"{class_str} detected (confidence: {confidence:.0%})\n\n"
                 f"Detection: {class_str}"
             )
         elif threat_detected:
             if not self.notify_on_threat:
-                return
-            title = f"{self.threat_title} — {camera_name}"
+                return False
+            title = f"{title_prefix}{self.threat_title} — {camera_name}"
             message = ai_text or f"Threat detected: {class_str} ({confidence:.0%})"
         else:
             if not self.notify_on_all_clear:
-                return
-            title = f"{self.clear_title} — {camera_name}"
+                return False
+            title = f"{title_prefix}{self.clear_title} — {camera_name}"
             message = ai_text or f"No threat — {class_str} detected ({confidence:.0%})"
 
-        await self._send_notification(
+        return await self._send_notification(
             title=title,
             message=message,
             image_path=image_path if self.notify_include_photo else None,
@@ -481,11 +855,11 @@ class RfDetrVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
         title: str,
         message: str,
         image_path: str | None = None,
-    ) -> None:
+    ) -> bool:
         service_parts = self.notify_service.split(".", 1)
         if len(service_parts) != 2:
             _LOGGER.warning("Invalid notify service: %s", self.notify_service)
-            return
+            return False
         domain, service = service_parts
         try:
             await self.hass.services.async_call(
@@ -501,5 +875,7 @@ class RfDetrVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
                     {"file": image_path, "caption": title},
                     blocking=False,
                 )
+            return True
         except Exception:
             _LOGGER.exception("Notification failed for service %s.%s", domain, service)
+            return False

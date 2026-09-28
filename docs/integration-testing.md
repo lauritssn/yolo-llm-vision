@@ -90,3 +90,117 @@ Summary:
 2. **Install deps**: `uv pip install -r sidecar/requirements.txt`.
 3. **Run sidecar**: `python main.py` from `sidecar/`.
 4. **Test**: `/try` demo page or curl to `/detect`.
+
+## 5. Test the Home Assistant pipeline (RF-DETR + AI Task + Telegram)
+
+Use this checklist after the integration, sidecar add-on, and cameras are configured.
+
+### Step A — Sidecar only (no Home Assistant)
+
+1. Open `http://<sidecar-host>:8000/try` and upload `bus.jpg` or `zidane.jpg`.
+2. Confirm masks and classes appear. Use `empty.jpg` to confirm no false positives.
+
+### Step B — Dry run (Developer Tools)
+
+1. Go to **Developer Tools → Services**.
+2. Call **`rf_detr_vision.test_pipeline`**:
+
+```yaml
+service: rf_detr_vision.test_pipeline
+data:
+  entity_id: camera.driveway
+  send_notifications: false
+  bypass_detection_gate: false
+  force_ai: true
+  use_camera_snapshot: true
+  snapshot_delay_seconds: 2
+```
+
+This mirrors the security blueprint: **`camera.snapshot`** → wait → read JPEG from `/config/www/` → RF-DETR → AI Task → notify.
+
+3. Check the response JSON:
+   - `steps.sidecar_health.ok` — sidecar reachable
+   - `steps.snapshot.ok` — camera frame grab worked
+   - `steps.snapshot.method` — should be `camera.snapshot` (or `async_get_image` if snapshot failed)
+   - `steps.snapshot.snapshot_path` — path to the saved JPEG on disk
+   - `steps.detection.gate_passed` — RF-DETR found something relevant
+   - `steps.ai_task.ok` — OpenAI AI Task responded
+   - `steps.notification.reason` — should say dry run
+
+### Step C — Test ChatGPT without standing in front of the camera
+
+Set `bypass_detection_gate: true` so AI runs even when the driveway is empty:
+
+```yaml
+service: rf_detr_vision.test_pipeline
+data:
+  entity_id: camera.driveway
+  send_notifications: false
+  bypass_detection_gate: true
+  force_ai: true
+```
+
+Confirm `steps.ai_task.ran` is true and `response_preview` looks sensible.
+
+### Step D — Live notifications (Telegram)
+
+```yaml
+service: rf_detr_vision.test_pipeline
+data:
+  entity_id: camera.driveway
+  send_notifications: true
+  bypass_detection_gate: true
+  notification_prefix: "[TEST] "
+```
+
+You should receive:
+
+1. A production-style alert or all-clear (when detection gate passes or is bypassed).
+2. A second **Pipeline test** summary message prefixed with `[TEST]`.
+
+Verify the snapshot photo is attached if **Send snapshot photo** is enabled in integration options.
+
+### Step E — One-click self-test blueprint
+
+Import the self-test blueprint:
+
+```
+https://raw.githubusercontent.com/lauritssn/yolo-llm-vision/main/blueprints/automation/rf_detr_vision/pipeline_self_test.yaml
+```
+
+1. **Settings → Automations → Create automation → Import blueprint**.
+2. Select **RF-DETR Pipeline Self-Test**.
+3. Choose your **Driveway** camera and enable **Send real notifications**.
+4. Save the automation.
+5. Open the automation and click **Run actions** (runs immediately without waiting for motion).
+
+A persistent notification in Home Assistant shows the summary when enabled.
+
+### Step F — Full security blueprint (motion/event)
+
+Import the production blueprint:
+
+```
+https://raw.githubusercontent.com/lauritssn/yolo-llm-vision/main/blueprints/automation/rf_detr_vision/camera_event_pipeline.yaml
+```
+
+1. Configure **Driveway** camera, motion sensors, OpenAI AI Task, and Telegram as in your setup.
+2. Trigger real motion or fire your camera event from Developer Tools.
+3. Confirm RF-DETR gates expensive AI — check logs for detection before AI Task runs.
+4. Confirm threat vs all-clear titles match your blueprint settings.
+
+### Step G — Listen for test completion event
+
+Developer Tools → **Events** → listen to `rf_detr_vision_test_complete`.
+
+Each `test_pipeline` run fires this event with the full report payload (useful for debugging automations).
+
+### Quick reference
+
+| Goal | Service / action |
+|------|------------------|
+| RF-DETR only | `rf_detr_vision.analyze` with `entity_id` |
+| Full pipeline dry run | `rf_detr_vision.test_pipeline`, `send_notifications: false` |
+| Test Telegram + AI | `test_pipeline`, `send_notifications: true`, `bypass_detection_gate: true` |
+| One-click in UI | Self-test blueprint → **Run actions** |
+| Production flow | Security blueprint on motion/event |

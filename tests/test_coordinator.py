@@ -13,7 +13,7 @@ from homeassistant.components.camera import Image
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from custom_components.rf_detr_vision.const import EVENT_DETECTION
+from custom_components.rf_detr_vision.const import EVENT_DETECTION, EVENT_TEST_COMPLETE
 from custom_components.rf_detr_vision.coordinator import (
     CameraState,
     RfDetrVisionCoordinator,
@@ -372,3 +372,243 @@ async def test_analyze_camera_with_ai_task_all_clear(
     ]
     assert len(notify_calls) == 1
     assert notify_calls[0][0][2]["title"].startswith("All Clear")
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_test_pipeline_fails_when_sidecar_unhealthy(
+    coordinator: RfDetrVisionCoordinator,
+    mock_hass: MagicMock,
+) -> None:
+    respx.get("http://sidecar:8000/health").mock(
+        return_value=httpx.Response(503, json={"status": "down"}),
+    )
+
+    report = await coordinator.test_pipeline("camera.front_door")
+
+    assert report["test"] is True
+    assert report["steps"]["sidecar_health"]["ok"] is False
+    assert "Sidecar health check failed" in report["summary"]
+    mock_hass.bus.async_fire.assert_called_once()
+    assert mock_hass.bus.async_fire.call_args[0][0] == EVENT_TEST_COMPLETE
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_test_pipeline_dry_run_full_success(
+    mock_config_entry: MagicMock,
+    mock_hass: MagicMock,
+) -> None:
+    mock_config_entry.data = {
+        **mock_config_entry.data,
+        "ai_task_entity": "ai_task.openai_ai_task",
+        "threat_phrase": "THREAT DETECTED",
+        "notify_service": "notify.telegram",
+    }
+    coordinator = RfDetrVisionCoordinator(mock_hass, mock_config_entry)
+
+    respx.get("http://sidecar:8000/health").mock(
+        return_value=httpx.Response(200, json={"status": "ok", "model": "nano"}),
+    )
+    respx.post("http://sidecar:8000/detect").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "detected": True,
+                "detection_count": 1,
+                "classes_detected": ["person"],
+                "confidence_max": 0.91,
+                "inference_time_ms": 45.0,
+            },
+        ),
+    )
+    fake_image = Image(content_type="image/jpeg", content=b"fake_jpeg_bytes")
+    mock_hass.services.async_call = AsyncMock(
+        return_value={"data": "Person visible. THREAT DETECTED"}
+    )
+
+    with patch(
+        "custom_components.rf_detr_vision.coordinator.async_get_image",
+        AsyncMock(return_value=fake_image),
+    ):
+        report = await coordinator.test_pipeline(
+            "camera.front_door",
+            send_notifications=False,
+            use_camera_snapshot=False,
+        )
+
+    assert report["ok"] is True
+    assert report["steps"]["detection"]["gate_passed"] is True
+    assert report["steps"]["ai_task"]["ok"] is True
+    assert report["steps"]["ai_task"]["threat_detected"] is True
+    assert report["steps"]["notification"]["reason"] == "send_notifications is false (dry run)"
+    assert "THREAT DETECTED" in report["summary"] or report["steps"]["ai_task"]["ok"]
+    mock_hass.bus.async_fire.assert_called_once()
+    assert mock_hass.bus.async_fire.call_args[0][0] == EVENT_TEST_COMPLETE
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_test_pipeline_bypass_gate_runs_ai_when_no_detection(
+    mock_config_entry: MagicMock,
+    mock_hass: MagicMock,
+) -> None:
+    mock_config_entry.data = {
+        **mock_config_entry.data,
+        "ai_task_entity": "ai_task.openai_ai_task",
+    }
+    coordinator = RfDetrVisionCoordinator(mock_hass, mock_config_entry)
+
+    respx.get("http://sidecar:8000/health").mock(
+        return_value=httpx.Response(200, json={"status": "ok"}),
+    )
+    respx.post("http://sidecar:8000/detect").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "detected": False,
+                "detection_count": 0,
+                "classes_detected": [],
+                "confidence_max": 0.0,
+                "inference_time_ms": 30.0,
+            },
+        ),
+    )
+    fake_image = Image(content_type="image/jpeg", content=b"fake_jpeg_bytes")
+    mock_hass.services.async_call = AsyncMock(return_value={"data": "Empty driveway."})
+
+    with patch(
+        "custom_components.rf_detr_vision.coordinator.async_get_image",
+        AsyncMock(return_value=fake_image),
+    ):
+        report = await coordinator.test_pipeline(
+            "camera.front_door",
+            bypass_detection_gate=True,
+            send_notifications=False,
+            use_camera_snapshot=False,
+        )
+
+    assert report["steps"]["detection_gate"]["bypassed"] is True
+    assert report["steps"]["ai_task"]["ran"] is True
+    assert report["steps"]["ai_task"]["ok"] is True
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_test_pipeline_sends_notifications_when_requested(
+    mock_config_entry: MagicMock,
+    mock_hass: MagicMock,
+) -> None:
+    mock_config_entry.data = {
+        **mock_config_entry.data,
+        "ai_task_entity": "ai_task.openai_ai_task",
+        "threat_phrase": "THREAT DETECTED",
+        "notify_service": "notify.test",
+        "notify_on_threat": True,
+        "threat_notification_title": "SECURITY ALERT",
+    }
+    coordinator = RfDetrVisionCoordinator(mock_hass, mock_config_entry)
+
+    respx.get("http://sidecar:8000/health").mock(
+        return_value=httpx.Response(200, json={"status": "ok"}),
+    )
+    respx.post("http://sidecar:8000/detect").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "detected": True,
+                "detection_count": 1,
+                "classes_detected": ["person"],
+                "confidence_max": 0.93,
+                "inference_time_ms": 50.0,
+            },
+        ),
+    )
+    fake_image = Image(content_type="image/jpeg", content=b"fake_jpeg_bytes")
+    mock_hass.services.async_call = AsyncMock(
+        return_value={"data": "Person in frame. THREAT DETECTED"}
+    )
+
+    with patch(
+        "custom_components.rf_detr_vision.coordinator.async_get_image",
+        AsyncMock(return_value=fake_image),
+    ):
+        report = await coordinator.test_pipeline(
+            "camera.front_door",
+            send_notifications=True,
+            notification_prefix="[TEST] ",
+            use_camera_snapshot=False,
+        )
+
+    notify_calls = [
+        c for c in mock_hass.services.async_call.call_args_list if c[0][0] == "notify"
+    ]
+    assert len(notify_calls) >= 2
+    assert report["steps"]["notification"]["sent"] is True
+    assert any(
+        "[TEST]" in str(c[0][2].get("title", "")) for c in notify_calls
+    )
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_test_pipeline_uses_camera_snapshot_when_enabled(
+    mock_config_entry: MagicMock,
+    mock_hass: MagicMock,
+) -> None:
+    mock_config_entry.data = {
+        **mock_config_entry.data,
+        "ai_task_entity": "ai_task.openai_ai_task",
+    }
+    coordinator = RfDetrVisionCoordinator(mock_hass, mock_config_entry)
+    snapshot_path = "/config/www/rf_detr_test_camera_front_door_20250101_120000.jpg"
+    fake_bytes = b"camera_jpeg_from_snapshot"
+
+    respx.get("http://sidecar:8000/health").mock(
+        return_value=httpx.Response(200, json={"status": "ok"}),
+    )
+    respx.post("http://sidecar:8000/detect").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "detected": True,
+                "detection_count": 1,
+                "classes_detected": ["person"],
+                "confidence_max": 0.9,
+                "inference_time_ms": 40.0,
+            },
+        ),
+    )
+
+    async def service_call(
+        domain: str, service: str, data: dict, **kwargs: object
+    ) -> dict[str, str] | None:
+        if domain == "camera" and service == "snapshot":
+            assert data["entity_id"] == "camera.front_door"
+            assert data["filename"] == snapshot_path
+            return None
+        if domain == "ai_task" and service == "generate_data":
+            return {"data": "Person visible."}
+        return None
+
+    mock_hass.services.async_call = AsyncMock(side_effect=service_call)
+    mock_hass.async_add_executor_job = AsyncMock(return_value=fake_bytes)
+
+    with patch.object(
+        coordinator,
+        "_build_snapshot_path",
+        return_value=snapshot_path,
+    ), patch(
+        "custom_components.rf_detr_vision.coordinator.asyncio.sleep",
+        AsyncMock(),
+    ):
+        report = await coordinator.test_pipeline(
+            "camera.front_door",
+            send_notifications=False,
+            snapshot_delay_seconds=2,
+            use_camera_snapshot=True,
+        )
+
+    assert report["steps"]["snapshot"]["method"] == "camera.snapshot"
+    assert report["steps"]["snapshot"]["snapshot_path"] == snapshot_path
+    assert report["steps"]["snapshot"]["delay_seconds"] == 2

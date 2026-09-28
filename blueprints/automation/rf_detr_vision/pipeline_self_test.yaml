@@ -1,0 +1,92 @@
+blueprint:
+  name: "RF-DETR Pipeline Self-Test"
+  description: >-
+    Manual one-click test of the full security pipeline: sidecar health,
+    RF-DETR detection, OpenAI AI Task analysis, and Telegram/notifications.
+    Does not wait for motion — run from the automation menu whenever you want
+    to verify everything works.
+
+    Requires rf_detr_vision integration configured (same settings as the
+    main security blueprint).
+  domain: automation
+  author: "RF-DETR + LLM Vision"
+  source_url: "https://github.com/lauritssn/yolo-llm-vision/blob/main/blueprints/automation/rf_detr_vision/pipeline_self_test.yaml"
+
+  input:
+    camera_entity:
+      name: Camera
+      description: Camera to test (e.g. Driveway).
+      selector:
+        entity:
+          domain: camera
+
+    send_notifications:
+      name: Send real notifications
+      description: >-
+        Send actual Telegram/notify messages prefixed with [TEST]. Turn off
+        for a dry run that only shows results in the automation trace.
+      default: true
+      selector:
+        boolean:
+
+    bypass_detection_gate:
+      name: Bypass detection gate
+      description: >-
+        Run AI Task even when RF-DETR finds nothing. Useful to test ChatGPT
+        on an empty driveway without walking in front of the camera.
+      default: false
+      selector:
+        boolean:
+
+    show_persistent_notification:
+      name: Show result in Home Assistant
+      description: Display the test summary as a persistent notification in HA.
+      default: true
+      selector:
+        boolean:
+
+    snapshot_delay_seconds:
+      name: Snapshot delay
+      description: >-
+        Seconds to wait after camera.snapshot before analysis (matches the
+        security blueprint). Gives the camera time to write the JPEG.
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 10
+          step: 1
+
+mode: single
+
+variables:
+  camera_id: !input camera_entity
+  camera_short_name: "{{ camera_id.split('.')[-1] | replace('_', ' ') | title }}"
+  show_persistent_notification: !input show_persistent_notification
+
+triggers:
+  - trigger: event
+    event_type: rf_detr_vision_run_self_test
+    id: manual_test
+
+actions:
+  - action: rf_detr_vision.test_pipeline
+    data:
+      entity_id: !input camera_entity
+      send_notifications: !input send_notifications
+      bypass_detection_gate: !input bypass_detection_gate
+      force_ai: true
+      notification_prefix: "[TEST] "
+      snapshot_delay_seconds: !input snapshot_delay_seconds
+      use_camera_snapshot: true
+    response_variable: test_result
+
+  - if:
+      - condition: template
+        value_template: "{{ show_persistent_notification }}"
+    then:
+      - action: persistent_notification.create
+        data:
+          title: "RF-DETR test — {{ camera_short_name }}"
+          message: "{{ test_result.summary }}"
+          notification_id: "rf_detr_vision_test_{{ camera_id | replace('.', '_') }}"

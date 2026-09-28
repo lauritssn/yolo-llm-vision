@@ -78,6 +78,11 @@ DETECTION_CLASS_OPTIONS = [
 ]
 
 EVENT_DETECTION = "rf_detr_vision_detection"
+EVENT_TEST_COMPLETE = "rf_detr_vision_test_complete"
+
+SERVICE_TEST_PIPELINE = "test_pipeline"
+DEFAULT_TEST_NOTIFICATION_PREFIX = "[TEST] "
+DEFAULT_SNAPSHOT_DELAY = 2
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,

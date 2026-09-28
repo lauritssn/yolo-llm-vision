@@ -17,7 +17,15 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
-from .const import CONF_SIDECAR_URL, DEFAULT_SIDECAR_URL, DOMAIN, PLATFORMS
+from .const import (
+    CONF_SIDECAR_URL,
+    DEFAULT_SIDECAR_URL,
+    DEFAULT_SNAPSHOT_DELAY,
+    DEFAULT_TEST_NOTIFICATION_PREFIX,
+    DOMAIN,
+    PLATFORMS,
+    SERVICE_TEST_PIPELINE,
+)
 from .coordinator import RfDetrVisionCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,6 +39,24 @@ SERVICE_ANALYZE_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.entity_id,
         vol.Optional("force_llm", default=False): cv.boolean,
+    }
+)
+
+SERVICE_TEST_PIPELINE_SCHEMA = vol.Schema(
+    {
+        vol.Required("entity_id"): cv.entity_id,
+        vol.Optional("send_notifications", default=False): cv.boolean,
+        vol.Optional("bypass_detection_gate", default=False): cv.boolean,
+        vol.Optional("force_ai", default=True): cv.boolean,
+        vol.Optional(
+            "notification_prefix",
+            default=DEFAULT_TEST_NOTIFICATION_PREFIX,
+        ): cv.string,
+        vol.Optional(
+            "snapshot_delay_seconds",
+            default=DEFAULT_SNAPSHOT_DELAY,
+        ): vol.All(vol.Coerce(float), vol.Range(min=0, max=30)),
+        vol.Optional("use_camera_snapshot", default=True): cv.boolean,
     }
 )
 
@@ -98,12 +124,35 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             )
         return result
 
+    async def handle_test_pipeline(call: ServiceCall) -> dict[str, Any]:
+        coordinator = _get_coordinator(hass)
+        return await coordinator.test_pipeline(
+            call.data["entity_id"],
+            send_notifications=call.data.get("send_notifications", False),
+            bypass_detection_gate=call.data.get("bypass_detection_gate", False),
+            force_ai=call.data.get("force_ai", True),
+            notification_prefix=call.data.get(
+                "notification_prefix", DEFAULT_TEST_NOTIFICATION_PREFIX
+            ),
+            snapshot_delay_seconds=call.data.get(
+                "snapshot_delay_seconds", DEFAULT_SNAPSHOT_DELAY
+            ),
+            use_camera_snapshot=call.data.get("use_camera_snapshot", True),
+        )
+
     hass.services.async_register(
         DOMAIN,
         SERVICE_ANALYZE,
         handle_analyze,
         schema=SERVICE_ANALYZE_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_TEST_PIPELINE,
+        handle_test_pipeline,
+        schema=SERVICE_TEST_PIPELINE_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
     )
     return True
 

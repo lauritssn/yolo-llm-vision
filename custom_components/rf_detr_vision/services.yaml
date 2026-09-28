@@ -21,3 +21,66 @@ analyze:
       default: false
       selector:
         boolean:
+
+test_pipeline:
+  name: Test full pipeline
+  description: >-
+    Step-by-step test of sidecar health, RF-DETR detection, AI Task analysis,
+    and notifications. Returns a structured report. Use send_notifications: true
+    to send real Telegram/notify messages prefixed with [TEST].
+  fields:
+    entity_id:
+      name: Camera entity
+      description: Camera to snapshot for the test (e.g. camera.driveway).
+      required: true
+      example: camera.driveway
+      selector:
+        entity:
+          domain: camera
+    send_notifications:
+      name: Send notifications
+      description: >-
+        When true, sends real notifications (production-style when detection
+        passes, plus a test summary). When false, dry run — report only.
+      default: false
+      selector:
+        boolean:
+    bypass_detection_gate:
+      name: Bypass detection gate
+      description: >-
+        When true, runs AI Task even if RF-DETR finds nothing relevant.
+        Use this to test ChatGPT on an empty scene.
+      default: false
+      selector:
+        boolean:
+    force_ai:
+      name: Run AI analysis
+      description: When false, skips AI Task even if configured.
+      default: true
+      selector:
+        boolean:
+    notification_prefix:
+      name: Notification prefix
+      description: Prefix added to notification titles (default [TEST] ).
+      default: "[TEST] "
+      selector:
+        text:
+    snapshot_delay_seconds:
+      name: Snapshot delay
+      description: >-
+        Seconds to wait after camera.snapshot before reading the file and
+        running detection (same as the security blueprint).
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 30
+          step: 1
+    use_camera_snapshot:
+      name: Use camera.snapshot
+      description: >-
+        When true, calls camera.snapshot to /config/www/ then reads that file
+        (production flow). When false, grabs a live frame via async_get_image.
+      default: true
+      selector:
+        boolean:
