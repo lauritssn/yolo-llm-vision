@@ -2,7 +2,7 @@
 name = "yolo-llm-vision"
 version = "2.0.6"
 requires-python = ">=3.13.2"
-description = "YOLO + LLM Vision HACS integration for Home Assistant"
+description = "RF-DETR + LLM Vision HACS integration for Home Assistant"
 readme = "README.md"
 license = { text = "MIT" }
 

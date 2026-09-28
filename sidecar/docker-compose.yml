@@ -1,5 +1,5 @@
 # =============================================================================
-# YOLO Sidecar — Standalone Deployment
+# RF-DETR Sidecar — Standalone Deployment
 # =============================================================================
 # Use this if you run the sidecar separately from your HA docker-compose.
 # Make sure this container can reach HA and vice versa (see docs/setup.md).

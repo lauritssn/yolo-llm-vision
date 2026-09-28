@@ -2,7 +2,7 @@
 
 The blueprint provides a camera security automation: motion trigger, RF-DETR detection gate, optional AI analysis, and Telegram/notification output.
 
-> **Prefer integration config:** If you configure **AI Task**, **threat prompt**, and **notifications** in **Settings > Devices & Services > YOLO + LLM Vision > Configure**, the integration runs the full pipeline automatically. Use this blueprint only when you need triggers, cooldowns, or custom automation logic the integration does not cover.
+> **Prefer integration config:** If you configure **AI Task**, **threat prompt**, and **notifications** in **Settings > Devices & Services > RF-DETR + LLM Vision > Configure**, the integration runs the full pipeline automatically. Use this blueprint only when you need triggers, cooldowns, or custom automation logic the integration does not cover.
 
 ## What It Does
 
@@ -125,6 +125,6 @@ Import the blueprint and set AI Task + Telegram inputs. RF-DETR gates the AI cal
 
 ## Detection Classes
 
-Configure classes in **Settings > Devices & Services > YOLO + LLM Vision > Configure > Cameras & detection**. Default includes person, dog, car, truck, horse, cow, and bear.
+Configure classes in **Settings > Devices & Services > RF-DETR + LLM Vision > Configure > Cameras & detection**. Default includes person, dog, car, truck, horse, cow, and bear.
 
 The blueprint and service use whatever classes the integration is configured to detect. If RF-DETR finds none of those classes above the confidence threshold, analysis stops before any AI call.

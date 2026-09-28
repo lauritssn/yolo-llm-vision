@@ -1,11 +1,11 @@
 # Installation and Setup
 
-You need two things: the **RF-DETR sidecar** (runs local segmentation) and the **YOLO + LLM Vision** integration (connects HA to the sidecar and runs the full pipeline). Install the sidecar first, then the integration via HACS.
+You need two things: the **RF-DETR sidecar** (runs local segmentation) and the **RF-DETR + LLM Vision** integration (connects HA to the sidecar and runs the full pipeline). Install the sidecar first, then the integration via HACS.
 
 | Step | What | Where |
 |------|------|--------|
 | 1 | RF-DETR sidecar | Add-on Store (HAOS) or Docker (see below) |
-| 2 | YOLO + LLM Vision integration | HACS → Custom repositories → Type: **Integration** |
+| 2 | RF-DETR + LLM Vision integration | HACS → Custom repositories → Type: **Integration** |
 | 3 | Configure | Settings > Devices & Services → Add Integration (4-step wizard) |
 | 4 | (Optional) Blueprint | Only if you want the pipeline in a custom automation |
 
@@ -84,9 +84,9 @@ See [sidecar.md](sidecar.md) for API details and environment variables.
 2. Open the three-dot menu (⋮) → **Custom repositories**
 3. **Repository:** `https://github.com/lauritssn/yolo-llm-vision`
 4. **Type:** **Integration** → **Add**
-5. Go to **HACS > Integrations** → **Explore & Download** → search **YOLO + LLM Vision** → **Download**
+5. Go to **HACS > Integrations** → **Explore & Download** → search **RF-DETR + LLM Vision** → **Download**
 6. **Restart Home Assistant**
-7. Go to **Settings > Devices & Services > Add Integration**, search for **YOLO + LLM Vision**
+7. Go to **Settings > Devices & Services > Add Integration**, search for **RF-DETR + LLM Vision**
 
 ### Manual install (no HACS)
 
@@ -151,7 +151,7 @@ See [blueprint.md](blueprint.md) for blueprint inputs.
 
 ### Integration settings
 
-**Settings > Devices & Services** → YOLO + LLM Vision → **Configure** → pick a section (Sidecar, Cameras, AI analysis, Notifications).
+**Settings > Devices & Services** → RF-DETR + LLM Vision → **Configure** → pick a section (Sidecar, Cameras, AI analysis, Notifications).
 
 ### Add-on settings (HAOS only)
 

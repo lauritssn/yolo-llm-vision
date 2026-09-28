@@ -1,4 +1,4 @@
-"""Sensor platform for YOLO + LLM Vision."""
+"""Sensor platform for RF-DETR + LLM Vision."""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ class YoloConfidenceSensor(_YoloSensorBase):
         super().__init__(coordinator, cam)
         safe = cam.replace(".", "_")
         self._attr_unique_id = f"{DOMAIN}_{safe}_confidence"
-        self._attr_name = f"YOLO confidence {cam.split('.')[-1]}"
+        self._attr_name = f"RF-DETR confidence {cam.split('.')[-1]}"
 
     @property
     def native_value(self) -> float:
@@ -72,7 +72,7 @@ class YoloDetectionCountSensor(_YoloSensorBase):
         super().__init__(coordinator, cam)
         safe = cam.replace(".", "_")
         self._attr_unique_id = f"{DOMAIN}_{safe}_detection_count"
-        self._attr_name = f"YOLO detection count {cam.split('.')[-1]}"
+        self._attr_name = f"RF-DETR detection count {cam.split('.')[-1]}"
 
     @property
     def native_value(self) -> int:
@@ -88,7 +88,7 @@ class YoloClassesSensor(_YoloSensorBase):
         super().__init__(coordinator, cam)
         safe = cam.replace(".", "_")
         self._attr_unique_id = f"{DOMAIN}_{safe}_classes"
-        self._attr_name = f"YOLO classes {cam.split('.')[-1]}"
+        self._attr_name = f"RF-DETR classes {cam.split('.')[-1]}"
 
     @property
     def native_value(self) -> str:
@@ -103,7 +103,7 @@ class YoloLastDetectedSensor(_YoloSensorBase):
         super().__init__(coordinator, cam)
         safe = cam.replace(".", "_")
         self._attr_unique_id = f"{DOMAIN}_{safe}_last_detected"
-        self._attr_name = f"YOLO last detected {cam.split('.')[-1]}"
+        self._attr_name = f"RF-DETR last detected {cam.split('.')[-1]}"
 
     @property
     def native_value(self) -> str | None:
@@ -118,7 +118,7 @@ class YoloLLMSummarySensor(_YoloSensorBase):
         super().__init__(coordinator, cam)
         safe = cam.replace(".", "_")
         self._attr_unique_id = f"{DOMAIN}_{safe}_llm_summary"
-        self._attr_name = f"YOLO LLM summary {cam.split('.')[-1]}"
+        self._attr_name = f"RF-DETR AI summary {cam.split('.')[-1]}"
 
     @property
     def native_value(self) -> str | None:

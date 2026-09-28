@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for YOLO + LLM Vision unit tests."""
+"""Shared pytest fixtures for RF-DETR + LLM Vision unit tests."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ def mock_config_entry(
     entry.data = dict(mock_config_entry_data)
     entry.options = dict(mock_config_entry_options)
     entry.entry_id = "test-entry-id"
-    entry.title = "YOLO LLM Vision"
+    entry.title = "RF-DETR + LLM Vision"
     entry.runtime_data = None  # Set by tests to coordinator when needed
     return entry
 

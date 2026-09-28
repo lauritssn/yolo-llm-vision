@@ -1,4 +1,4 @@
-"""DataUpdateCoordinator for YOLO + LLM Vision."""
+"""DataUpdateCoordinator for RF-DETR + LLM Vision."""
 
 from __future__ import annotations
 

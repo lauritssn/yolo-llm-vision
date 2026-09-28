@@ -1,7 +1,7 @@
 {
   "exceptions": {
     "no_loaded_entries": {
-      "message": "No YOLO + LLM Vision configuration entries are loaded. Add the integration first via Settings > Devices & Services."
+      "message": "No RF-DETR + LLM Vision configuration entries are loaded. Add the integration first via Settings > Devices & Services."
     }
   },
   "config": {
@@ -70,7 +70,7 @@
   "options": {
     "step": {
       "menu": {
-        "title": "Configure YOLO + LLM Vision",
+        "title": "Configure RF-DETR + LLM Vision",
         "description": "Choose a settings section to update.",
         "data": {
           "next_step": "Settings section"

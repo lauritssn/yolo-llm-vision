@@ -1,6 +1,8 @@
-# YOLO + LLM Vision — HACS Integration
+# RF-DETR + LLM Vision — HACS Integration
 
 Local object detection for Home Assistant cameras using a [Roboflow RF-DETR](https://github.com/roboflow/rf-detr) sidecar. Detects people, animals, vehicles and more — only calls expensive AI analysis when something relevant is actually there.
+
+> **Note:** The Home Assistant domain remains `yolo_llm_vision` for compatibility (entity IDs, services, and automations are unchanged).
 
 ## How It Works
 
@@ -61,13 +63,13 @@ See [docs/setup.md](docs/setup.md) for full details on both methods.
 3. **Repository:** `https://github.com/lauritssn/yolo-llm-vision`
 4. **Type:** **Integration**
 5. Click **Add**
-6. In HACS, go to **Integrations** → **Explore & Download** (or **+**), search for **YOLO + LLM Vision** → **Download**
+6. In HACS, go to **Integrations** → **Explore & Download** (or **+**), search for **RF-DETR + LLM Vision** → **Download**
 7. **Restart Home Assistant**
-8. Go to **Settings > Devices & Services > Add Integration** → search **YOLO + LLM Vision** → configure
+8. Go to **Settings > Devices & Services > Add Integration** → search **RF-DETR + LLM Vision** → configure
 
 ### 3. Configure
 
-Go to **Settings > Devices & Services > Add Integration > YOLO + LLM Vision**. Setup is a four-step wizard; reopen **Configure** on the integration anytime to edit a section.
+Go to **Settings > Devices & Services > Add Integration > RF-DETR + LLM Vision**. Setup is a four-step wizard; reopen **Configure** on the integration anytime to edit a section.
 
 **Sidecar**
 
@@ -177,7 +179,7 @@ For each configured camera:
 
 | Entity | Type | Description |
 |---|---|---|
-| `binary_sensor.yolo_detection_*` | Binary Sensor | On when YOLO detects a configured class |
+| `binary_sensor.yolo_detection_*` | Binary Sensor | On when RF-DETR detects a configured class |
 | `sensor.yolo_confidence_*` | Sensor | Highest detection confidence (%) |
 | `sensor.yolo_detection_count_*` | Sensor | Number of detections |
 | `sensor.yolo_classes_*` | Sensor | Comma-separated detected class names |

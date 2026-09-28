@@ -1,4 +1,4 @@
-"""Constants for the YOLO + LLM Vision integration."""
+"""Constants for the RF-DETR + LLM Vision integration."""
 
 from __future__ import annotations
 

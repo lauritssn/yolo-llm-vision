@@ -1,9 +1,9 @@
 analyze:
   name: Analyze camera
   description: >-
-    Grab a snapshot from a camera, run it through YOLO for object detection,
-    and optionally call LLM Vision for detailed analysis. Returns the detection
-    result including detected classes, confidence, and count.
+    Grab a snapshot from a camera, run RF-DETR segmentation via the sidecar,
+    and optionally run AI Task or LLM Vision threat analysis. Returns detection
+    classes, confidence, count, and optional ai_analysis / threat_detected.
   fields:
     entity_id:
       name: Camera entity

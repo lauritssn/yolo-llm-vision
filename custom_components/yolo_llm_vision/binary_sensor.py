@@ -1,4 +1,4 @@
-"""Binary sensor platform for YOLO + LLM Vision."""
+"""Binary sensor platform for RF-DETR + LLM Vision."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ async def async_setup_entry(
 class YoloDetectionBinarySensor(
     CoordinatorEntity[YoloLLMVisionCoordinator], BinarySensorEntity
 ):
-    """On when the YOLO sidecar detects a configured object class."""
+    """On when the RF-DETR sidecar detects a configured object class."""
 
     _attr_device_class = BinarySensorDeviceClass.MOTION
     _attr_has_entity_name = True
@@ -42,7 +42,7 @@ class YoloDetectionBinarySensor(
         self._camera = camera_entity_id
         safe = camera_entity_id.replace(".", "_")
         self._attr_unique_id = f"{DOMAIN}_{safe}_detected"
-        self._attr_name = f"YOLO detection {camera_entity_id.split('.')[-1]}"
+        self._attr_name = f"RF-DETR detection {camera_entity_id.split('.')[-1]}"
 
     @property
     def _cam_state(self) -> CameraState:

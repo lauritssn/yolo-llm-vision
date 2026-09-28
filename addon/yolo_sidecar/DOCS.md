@@ -1,6 +1,6 @@
 # RF-DETR Segmentation — Add-on Documentation
 
-This add-on runs a local [Roboflow RF-DETR](https://github.com/roboflow/rf-detr) instance segmentation server. The **YOLO + LLM Vision** HACS integration sends camera snapshots here for local detection before optional AI threat analysis.
+This add-on runs a local [Roboflow RF-DETR](https://github.com/roboflow/rf-detr) instance segmentation server. The **RF-DETR + LLM Vision** HACS integration sends camera snapshots here for local detection before optional AI threat analysis.
 
 **Install from the Add-on Store:** **Settings > Add-ons > Add-on Store** → ⋮ → **Repositories** → add `https://github.com/lauritssn/yolo-llm-vision` → install **RF-DETR Segmentation**.
 
@@ -46,7 +46,7 @@ Set to `debug` for verbose logging during troubleshooting.
 After starting this add-on:
 
 1. **Settings > Devices & Services > Add Integration**
-2. Search **YOLO + LLM Vision**
+2. Search **RF-DETR + LLM Vision**
 3. Sidecar URL — try in order:
 
 ```

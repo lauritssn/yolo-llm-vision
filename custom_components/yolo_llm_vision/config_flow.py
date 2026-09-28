@@ -1,4 +1,4 @@
-"""Config flow for YOLO + LLM Vision."""
+"""Config flow for RF-DETR + LLM Vision."""
 
 from __future__ import annotations
 
@@ -211,7 +211,7 @@ def _build_schema(
 
 
 class YoloLLMVisionConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for YOLO + LLM Vision."""
+    """Handle a config flow for RF-DETR + LLM Vision."""
 
     VERSION = 2
 
@@ -266,7 +266,7 @@ class YoloLLMVisionConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self._draft.update(user_input)
             return self.async_create_entry(
-                title="YOLO + LLM Vision",
+                title="RF-DETR + LLM Vision",
                 data=self._draft,
             )
         defaults = _merged_config(None, self._draft)
@@ -282,7 +282,7 @@ class YoloLLMVisionConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class YoloLLMVisionOptionsFlow(OptionsFlow):
-    """Handle an options flow for YOLO + LLM Vision."""
+    """Handle an options flow for RF-DETR + LLM Vision."""
 
     def __init__(self) -> None:
         self._draft: dict[str, Any] = {}

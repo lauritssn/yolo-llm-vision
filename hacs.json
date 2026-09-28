@@ -1,5 +1,5 @@
 {
-  "name": "YOLO + LLM Vision",
+  "name": "RF-DETR + LLM Vision",
   "homeassistant": "2025.1.0",
   "render_readme": true
 }

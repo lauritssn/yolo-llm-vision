@@ -1,7 +1,7 @@
-"""YOLO + LLM Vision integration for Home Assistant.
+"""RF-DETR + LLM Vision integration for Home Assistant.
 
-Runs local YOLOv8 object detection via a Docker sidecar. Optionally calls
-LLM Vision for rich AI analysis when a relevant object is detected.
+Runs local RF-DETR instance segmentation via a Docker sidecar. Optionally
+calls AI Task or LLM Vision when a relevant object is detected.
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ def _get_coordinator(hass: HomeAssistant) -> YoloLLMVisionCoordinator:
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register YOLO + LLM Vision services (once, independent of entries)."""
+    """Register RF-DETR + LLM Vision services (once, independent of entries)."""
 
     async def handle_analyze(call: ServiceCall) -> dict[str, Any]:
         _LOGGER.debug(
@@ -68,7 +68,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 len(all_entries),
                 [(e.entry_id, e.state) for e in all_entries],
             )
-            _LOGGER.exception("No loaded config entry for YOLO + LLM Vision")
+            _LOGGER.exception("No loaded config entry for RF-DETR + LLM Vision")
             raise
         cfg = {**coordinator.config_entry.data, **coordinator.config_entry.options}
         sidecar_url = cfg.get(CONF_SIDECAR_URL, DEFAULT_SIDECAR_URL)
@@ -132,7 +132,7 @@ async def _check_sidecar_health(hass: HomeAssistant, sidecar_url: str) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: YoloConfigEntry) -> bool:
-    """Set up YOLO + LLM Vision from a config entry."""
+    """Set up RF-DETR + LLM Vision from a config entry."""
     _LOGGER.debug(
         "async_setup_entry: entry_id=%s, entry.data=%s, entry.options=%s",
         entry.entry_id,
@@ -171,6 +171,6 @@ async def _async_update_listener(
 async def async_unload_entry(
     hass: HomeAssistant, entry: YoloConfigEntry
 ) -> bool:
-    """Unload a YOLO + LLM Vision config entry."""
+    """Unload a RF-DETR + LLM Vision config entry."""
     entry.runtime_data.stop_listening()
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

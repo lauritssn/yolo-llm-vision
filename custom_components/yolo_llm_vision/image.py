@@ -1,4 +1,4 @@
-"""Image platform for YOLO + LLM Vision — annotated snapshot per camera."""
+"""Image platform for RF-DETR + LLM Vision — annotated snapshot per camera."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ async def async_setup_entry(
 class YoloAnnotatedImage(
     CoordinatorEntity[YoloLLMVisionCoordinator], ImageEntity
 ):
-    """Image entity serving the last YOLO-annotated snapshot."""
+    """Image entity serving the last RF-DETR annotated snapshot."""
 
     _attr_has_entity_name = True
     _attr_content_type = "image/jpeg"
@@ -51,7 +51,7 @@ class YoloAnnotatedImage(
             if state
             else camera_entity_id.split(".")[-1].replace("_", " ").title()
         )
-        self._attr_name = f"{cam_name} YOLO Annotated"
+        self._attr_name = f"{cam_name} RF-DETR annotated"
         self._cached_image: bytes | None = None
 
     async def async_image(self) -> bytes | None:
