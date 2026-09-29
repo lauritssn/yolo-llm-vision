@@ -1,5 +1,0 @@
-# Debian base with s6-init (required for PyTorch / RF-DETR on HA Supervisor).
-# See: https://developers.home-assistant.io/docs/add-ons/configuration/
-build_from:
-  amd64: ghcr.io/hassio-addons/debian-base/amd64:3.20
-  aarch64: ghcr.io/hassio-addons/debian-base/aarch64:3.20

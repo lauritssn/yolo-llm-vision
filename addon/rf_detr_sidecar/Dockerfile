@@ -1,5 +1,6 @@
-ARG BUILD_FROM
-FROM ${BUILD_FROM}
+# Debian base with s6-init (PyTorch / RF-DETR). Supervisor passes BUILD_ARCH.
+ARG BUILD_ARCH=amd64
+FROM ghcr.io/hassio-addons/debian-base/${BUILD_ARCH}:9.5.0
 
 ENV PIP_BREAK_SYSTEM_PACKAGES=1 \
     PYTHONDONTWRITEBYTECODE=1 \
