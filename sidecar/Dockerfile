@@ -17,9 +17,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download default RF-DETR-Seg Nano weights (~128 MB) at build time
-RUN python -c "from rfdetr import RFDETRSegNano; RFDETRSegNano()"
-
 RUN mkdir -p /models
 
 COPY main.py .
@@ -30,7 +27,7 @@ USER appuser
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
+    CMD python -c "import httpx; r=httpx.get('http://127.0.0.1:8000/health', timeout=8.0); r.raise_for_status(); assert r.json().get('status') in ('ok','starting')"
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

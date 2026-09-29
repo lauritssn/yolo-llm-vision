@@ -8,7 +8,7 @@ Full steps: [README](https://github.com/lauritssn/yolo-llm-vision#quick-start) a
 
 ## Installation time
 
-**First install and start can take several minutes.** The add-on builds a Docker image and downloads RF-DETR weights on first run. This is normal — later starts are much faster. Wait for the log to show **Sidecar ready** before configuring the integration.
+**First install and start can take several minutes.** The add-on builds a Docker image; RF-DETR weights load in the background after the HTTP server starts. The add-on should show **Started** once `/health` responds (status may be `starting` while the model loads). Wait for the log to show **Sidecar ready** before running detection tests.
 
 ## How It Works
 

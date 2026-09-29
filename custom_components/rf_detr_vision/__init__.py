@@ -158,12 +158,19 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 async def _check_sidecar_health(hass: HomeAssistant, sidecar_url: str) -> bool:
-    """GET sidecar /health and return True if OK."""
+    """GET sidecar /health and return True if the server is up (ok or still starting)."""
     url = f"{sidecar_url.rstrip('/')}/health"
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(url)
             ok = resp.status_code == 200
+            if ok:
+                try:
+                    body = resp.json()
+                    if isinstance(body, dict):
+                        ok = body.get("status") in ("ok", "starting")
+                except Exception:
+                    pass
             _LOGGER.debug(
                 "Sidecar health check %s: GET %s -> status=%s, body=%s",
                 "passed" if ok else "failed",

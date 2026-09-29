@@ -187,8 +187,9 @@ curl -X POST http://localhost:8000/detect \
 
 Check the add-on **Log** tab. Common issues:
 
+- **Health check failed on first start**: Fixed in add-on **3.0.1+** — the HTTP server starts immediately and loads the model in the background. Update the add-on, uninstall/reinstall if needed, then wait for `Sidecar ready` in the log (model load can take several minutes on QNAP CPU).
 - **Out of memory**: RF-DETR Nano needs roughly 1–2 GB RAM during inference. Use `nano` on low-memory systems.
-- **Build failed / takes very long**: First build downloads PyTorch and model weights. Let it finish; later updates are faster.
+- **Build failed / takes very long**: First build downloads PyTorch and dependencies. Let it finish; later updates are faster.
 
 ### "Connection refused" in integration setup
 

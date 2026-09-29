@@ -75,9 +75,22 @@ The `annotated_image_base64` field is present when `draw_boxes` is true **and** 
 
 ### GET /health
 
+Liveness check. Returns **HTTP 200** immediately when the server is up. On first start, `status` is `starting` while the RF-DETR model loads in the background; switches to `ok` when inference is ready.
+
 ```json
 {
   "status": "ok",
+  "model": "seg-nano",
+  "engine": "rf-detr-seg",
+  "task": "segmentation"
+}
+```
+
+While loading:
+
+```json
+{
+  "status": "starting",
   "model": "seg-nano",
   "engine": "rf-detr-seg",
   "task": "segmentation"

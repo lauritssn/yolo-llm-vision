@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import logging
 import os
 import time
@@ -66,18 +67,38 @@ BOX_ANNOTATOR = sv.BoxAnnotator(
 _executor = ThreadPoolExecutor(max_workers=4)
 _model: Any | None = None
 _active_model_label: str = f"seg-{RFDETR_MODEL}"
+_model_ready: bool = False
+_model_error: str | None = None
+
+
+async def _load_model_background() -> None:
+    """Load RF-DETR in the background so /health responds before the model is ready."""
+    global _model_ready, _model_error  # noqa: PLW0603
+    loop = asyncio.get_running_loop()
+    try:
+        await loop.run_in_executor(_executor, _load_model)
+        _model_ready = True
+        logger.info(
+            "Sidecar ready — task=segmentation, model=%s, threshold=%.2f",
+            _active_model_label,
+            CONFIDENCE_THRESHOLD,
+        )
+    except Exception as exc:
+        _model_error = str(exc)
+        logger.exception("Model load failed")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ARG001
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(_executor, _load_model)
+    load_task = asyncio.create_task(_load_model_background())
     logger.info(
-        "Sidecar ready — task=segmentation, model=%s, threshold=%.2f",
-        _active_model_label,
-        CONFIDENCE_THRESHOLD,
+        "Sidecar HTTP server started — loading RF-DETR model %s in background",
+        RFDETR_MODEL,
     )
     yield
+    load_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await load_task
 
 
 def _load_model() -> Any:
@@ -316,8 +337,22 @@ def _run_inference(
     return result
 
 
+def _ensure_model_ready() -> None:
+    if _model_error:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Model load failed: {_model_error}",
+        )
+    if not _model_ready:
+        raise HTTPException(
+            status_code=503,
+            detail="Model still loading — retry in a few minutes on first start",
+        )
+
+
 @app.post("/detect")
 async def detect(req: DetectRequest) -> JSONResponse:
+    _ensure_model_ready()
     try:
         image_bytes = await _fetch_image_bytes(req)
     except httpx.HTTPError as exc:
@@ -351,6 +386,22 @@ async def detect(req: DetectRequest) -> JSONResponse:
 
 @app.get("/health")
 async def health() -> dict[str, str]:
+    """Liveness probe — returns 200 while the model loads (status=starting)."""
+    if _model_error:
+        return {
+            "status": "error",
+            "error": _model_error,
+            "model": _active_model_label,
+            "engine": "rf-detr-seg",
+            "task": "segmentation",
+        }
+    if not _model_ready:
+        return {
+            "status": "starting",
+            "model": _active_model_label,
+            "engine": "rf-detr-seg",
+            "task": "segmentation",
+        }
     return {
         "status": "ok",
         "model": _active_model_label,

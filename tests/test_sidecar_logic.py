@@ -134,7 +134,7 @@ def test_health_endpoint() -> None:
     resp = client.get("/health")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["status"] == "ok"
+    assert data["status"] in ("ok", "starting")
     assert data["engine"] == "rf-detr-seg"
     assert data["task"] == "segmentation"
     assert "model" in data

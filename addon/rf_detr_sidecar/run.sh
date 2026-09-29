@@ -26,4 +26,4 @@ print(f'export LOG_LEVEL=\"{l}\"')
 eval "$(read_options)"
 
 echo "[INFO] Starting RF-DETR segmentation sidecar — model=${RFDETR_MODEL}, threshold=${CONFIDENCE_THRESHOLD}"
-exec python3 /app/main.py
+exec uvicorn main:app --host 0.0.0.0 --port "${PORT:-8000}"

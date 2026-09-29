@@ -550,9 +550,18 @@ class RfDetrVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
         lines = [f"Pipeline test — {report.get('camera', 'camera')}"]
 
         health = steps.get("sidecar_health", {})
-        lines.append(
-            f"Sidecar: {'OK' if health.get('ok') else 'FAIL'} ({health.get('url', 'n/a')})"
-        )
+        status = (health.get("body") or {}).get("status")
+        if health.get("ok"):
+            if status == "starting":
+                lines.append("Sidecar: starting (model loading in background)")
+            else:
+                lines.append(
+                    f"Sidecar: OK ({health.get('url', 'n/a')})"
+                )
+        else:
+            lines.append(
+                f"Sidecar: FAIL ({health.get('url', 'n/a')})"
+            )
 
         snapshot = steps.get("snapshot", {})
         if snapshot.get("ok"):
@@ -628,8 +637,13 @@ class RfDetrVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
                             body = parsed
                     except Exception:
                         body = {"raw": resp.text[:200]}
+                health_ok = resp.status_code == 200
+                if health_ok and body:
+                    status = body.get("status")
+                    if status is not None:
+                        health_ok = status in ("ok", "starting")
                 return {
-                    "ok": resp.status_code == 200,
+                    "ok": health_ok,
                     "status_code": resp.status_code,
                     "url": url,
                     "body": body,
