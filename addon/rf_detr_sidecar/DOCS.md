@@ -8,7 +8,7 @@ Full steps: [README](https://github.com/lauritssn/yolo-llm-vision#quick-start) a
 
 ## Installation time
 
-**First install and start can take several minutes.** The add-on builds a Docker image on Bookworm (Python 3.11) for compatibility with older CPUs and NumPy 1.26; RF-DETR weights load in the background after the HTTP server starts. The add-on should show **Started** once `/health` responds (status may be `starting` while the model loads). Wait for the log to show **Sidecar ready** before running detection tests.
+**First install and start can take several minutes.** The add-on builds a Docker image; on first install NumPy 1.26 is compiled from source (Debian 13 / Python 3.13 has no compatible wheel, and NumPy 2.x breaks QNAP/QEMU CPUs). That compile step alone can take **10–20 minutes** on a NAS. RF-DETR weights then load in the background. Wait for the log to show **Sidecar ready** before running detection tests.
 
 ## How It Works
 

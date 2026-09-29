@@ -1,5 +1,5 @@
 name: RF-DETR Segmentation
-version: "3.0.8"
+version: "3.0.9"
 slug: rf_detr_sidecar
 description: >-
   Local RF-DETR instance segmentation sidecar for the RF-DETR + LLM Vision integration.

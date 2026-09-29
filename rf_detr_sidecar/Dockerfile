@@ -1,7 +1,7 @@
-# Debian Bookworm base (Python 3.11). Trixie/3.13 has no NumPy 1.26 wheels and
-# NumPy 2.x wheels need x86-64-v2 (breaks QNAP/QEMU VMs).
+# hassio debian-base 8.x and 9.x both use Debian 13 (Python 3.13).
+# NumPy 1.26 has no cp313 wheel; NumPy 2.x wheels need x86-64-v2 (QNAP/QEMU).
 ARG BUILD_ARCH=amd64
-FROM ghcr.io/hassio-addons/debian-base/${BUILD_ARCH}:8.1.4
+FROM ghcr.io/hassio-addons/debian-base/${BUILD_ARCH}:9.5.0
 
 ENV PIP_BREAK_SYSTEM_PACKAGES=1 \
     PIP_PREFER_BINARY=1 \
@@ -10,22 +10,32 @@ ENV PIP_BREAK_SYSTEM_PACKAGES=1 \
     PORT=8000 \
     MODELS_DIR=/models
 
-# RF-DETR / OpenCV runtime dependencies
+WORKDIR /app
+
+COPY requirements.txt /tmp/requirements.txt
+
+# Build NumPy 1.26 from source on Python 3.13 so binaries match the host/VM CPU.
+# First install can take 10–20 minutes on a NAS while NumPy compiles.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       python3 \
       python3-pip \
+      python3-dev \
+      build-essential \
+      gfortran \
+      libopenblas-dev \
       libgl1 \
       libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-COPY requirements.txt /tmp/requirements.txt
-# Pin NumPy 1.26 first, then reinstall after deps (rfdetr/torch may pull NumPy 2.x).
-RUN pip3 install --no-cache-dir --only-binary=numpy "numpy==1.26.4" && \
+    && pip3 install --no-cache-dir "numpy==1.26.4" && \
     pip3 install --no-cache-dir -r /tmp/requirements.txt && \
-    pip3 install --no-cache-dir --force-reinstall --no-deps --only-binary=numpy "numpy==1.26.4"
+    pip3 install --no-cache-dir --force-reinstall --no-deps "numpy==1.26.4" && \
+    apt-get purge -y --auto-remove \
+      build-essential \
+      gfortran \
+      libopenblas-dev \
+      python3-dev \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /models
 
