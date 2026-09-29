@@ -60,7 +60,13 @@ Check the add-on **Log** tab:
 Sidecar ready — task=segmentation, model=seg-nano, threshold=0.50
 ```
 
-Or open `http://<ha-ip>:8000/health` and `http://<ha-ip>:8000/try`.
+Or open the demo from Home Assistant:
+
+1. **Settings → Add-ons → RF-DETR Segmentation**
+2. Click **Open Web UI** (opens the `/try` demo inside HA via ingress)
+3. Optional: enable **Show in sidebar** for a **Try RF-DETR** panel in the HA menu
+
+Direct URL (port 8000 mapped): `http://<ha-ip>:8000/try` and `http://<ha-ip>:8000/health`.
 
 ## Building locally
 

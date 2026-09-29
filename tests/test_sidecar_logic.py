@@ -127,6 +127,7 @@ def test_try_demo_page() -> None:
     assert resp.status_code == 200
     assert "text/html" in resp.headers.get("content-type", "")
     assert "Try RF-DETR Segmentation" in resp.text
+    assert "function sidecarPath" in resp.text
 
 
 def test_health_endpoint() -> None:

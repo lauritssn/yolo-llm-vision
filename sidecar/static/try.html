@@ -436,6 +436,13 @@
   </main>
 
   <script>
+    /** Resolve API/static paths for direct access (/try) and HA ingress (/api/hassio_ingress/.../try). */
+    function sidecarPath(path) {
+      const base = window.location.pathname.replace(/\/try\/?$/, "") || "";
+      const suffix = path.startsWith("/") ? path : `/${path}`;
+      return `${base}${suffix}`;
+    }
+
     const SAMPLES = [
       { file: "bus.jpg", label: "Bus + people", hint: "person, bus" },
       { file: "zidane.jpg", label: "Soccer", hint: "person" },
@@ -481,7 +488,7 @@
         btn.type = "button";
         btn.className = "sample-btn";
         btn.title = sample.hint;
-        btn.innerHTML = `<img src="/static/samples/${sample.file}" alt="${sample.label}" loading="lazy" /><span>${sample.label}</span>`;
+        btn.innerHTML = `<img src="${sidecarPath(`/static/samples/${sample.file}`)}" alt="${sample.label}" loading="lazy" /><span>${sample.label}</span>`;
         btn.addEventListener("click", () => selectSample(sample, btn));
         samplesEl.appendChild(btn);
       });
@@ -493,7 +500,7 @@
       selectedSample = sample.file;
       fileInput.value = "";
 
-      const resp = await fetch(`/static/samples/${sample.file}`);
+      const resp = await fetch(sidecarPath(`/static/samples/${sample.file}`));
       const blob = await resp.blob();
       setImage(blob, URL.createObjectURL(blob));
     }
@@ -541,7 +548,7 @@
         const b64 = await blobToBase64(currentImageBytes);
         const classes = getSelectedClasses();
 
-        const resp = await fetch("/detect", {
+        const resp = await fetch(sidecarPath("/detect"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -614,7 +621,7 @@
 
     async function loadHealth() {
       try {
-        const resp = await fetch("/health");
+        const resp = await fetch(sidecarPath("/health"));
         const data = await resp.json();
         modelBadge.textContent = "Model: " + (data.model || "unknown");
       } catch {

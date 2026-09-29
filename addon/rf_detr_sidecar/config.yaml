@@ -1,5 +1,5 @@
 name: RF-DETR Segmentation
-version: "3.0.5"
+version: "3.0.6"
 slug: rf_detr_sidecar
 description: >-
   Local RF-DETR instance segmentation sidecar for the RF-DETR + LLM Vision integration.
@@ -10,7 +10,9 @@ url: "https://github.com/lauritssn/yolo-llm-vision"
 startup: services
 boot: auto
 host_network: false
-ingress: false
+ingress: true
+ingress_port: 8000
+ingress_entry: /try
 init: false
 homeassistant: "2025.1.0"
 
@@ -37,4 +39,6 @@ schema:
   log_level: "list(debug|info|warning|error)"
 
 panel_icon: "mdi:cctv"
+panel_title: "Try RF-DETR"
+panel_admin: false
 panel_color: "#41BDF5"
