@@ -10,6 +10,15 @@ export LOG_LEVEL="$(bashio::config 'log_level')"
 export PORT=8000
 export MODELS_DIR=/models
 
+# Disable oneDNN on older/QEMU CPUs (PyTorch conv "could not create a primitive").
+export TORCH_USE_ONEDNN=0
+export DNNL_MAX_CPU_ISA=SSE41
+export ATEN_CPU_CAPABILITY=DEFAULT
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-2}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-2}"
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-2}"
+export TORCH_NUM_THREADS="${TORCH_NUM_THREADS:-2}"
+
 cd /app || bashio::exit.nok "Missing /app directory"
 
 bashio::log.info "Model preset: ${RFDETR_MODEL}, threshold: ${CONFIDENCE_THRESHOLD}"

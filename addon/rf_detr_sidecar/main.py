@@ -13,6 +13,20 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
+# QNAP/QEMU virtual CPUs often fail oneDNN conv primitives ("could not create a primitive").
+# Must be configured before torch is first imported.
+for _env_key, _env_val in (
+    ("TORCH_USE_ONEDNN", "0"),
+    ("DNNL_MAX_CPU_ISA", "SSE41"),
+    ("ATEN_CPU_CAPABILITY", "DEFAULT"),
+):
+    os.environ.setdefault(_env_key, _env_val)
+
+import torch
+
+torch.backends.mkldnn.enabled = False
+torch.set_num_threads(int(os.getenv("TORCH_NUM_THREADS", "2")))
+
 import cv2
 import httpx
 import numpy as np

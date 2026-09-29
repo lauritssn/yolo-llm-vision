@@ -14,7 +14,12 @@ ENV PIP_BREAK_SYSTEM_PACKAGES=1 \
     PORT=8000 \
     MODELS_DIR=/models \
     PATH="/opt/python/bin:${PATH}" \
-    CUDA_VISIBLE_DEVICES=""
+    CUDA_VISIBLE_DEVICES="" \
+    TORCH_USE_ONEDNN=0 \
+    DNNL_MAX_CPU_ISA=SSE41 \
+    ATEN_CPU_CAPABILITY=DEFAULT \
+    TORCH_NUM_THREADS=2 \
+    OMP_NUM_THREADS=2
 
 # OpenCV / PyTorch runtime libs (NumPy wheel bundles its own BLAS — no libopenblas.so.0 needed).
 RUN apt-get update && \
