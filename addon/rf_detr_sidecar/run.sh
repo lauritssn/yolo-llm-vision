@@ -13,4 +13,4 @@ export MODELS_DIR=/models
 cd /app || bashio::exit.nok "Missing /app directory"
 
 bashio::log.info "Model preset: ${RFDETR_MODEL}, threshold: ${CONFIDENCE_THRESHOLD}"
-exec uvicorn main:app --host 0.0.0.0 --port "${PORT}"
+exec python -m uvicorn main:app --host 0.0.0.0 --port "${PORT}"

@@ -8,7 +8,7 @@ Full steps: [README](https://github.com/lauritssn/yolo-llm-vision#quick-start) a
 
 ## Installation time
 
-**First install and start can take several minutes.** The add-on builds a Docker image; on first install NumPy 1.26 is compiled from source (Debian 13 / Python 3.13 has no compatible wheel, and NumPy 2.x breaks QNAP/QEMU CPUs). That compile step alone can take **10–20 minutes** on a NAS. RF-DETR weights then load in the background. Wait for the log to show **Sidecar ready** before running detection tests.
+**First install and start can take several minutes.** The image downloads standalone **CPython 3.12** (Debian’s Python 3.13 cannot use NumPy 1.26 wheels; NumPy 2.x breaks QNAP/QEMU CPUs), installs binary wheels, then loads RF-DETR in the background. Wait for **Sidecar ready** before testing.
 
 ## How It Works
 
