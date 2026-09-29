@@ -20,7 +20,10 @@ RUN apt-get update && \
 WORKDIR /app
 
 COPY requirements.txt /tmp/requirements.txt
-RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+# Install NumPy 1.26 first — NumPy 2.x manylinux wheels need x86-64-v2 (breaks QNAP/QEMU VMs).
+RUN pip3 install --no-cache-dir "numpy==1.26.4" && \
+    pip3 install --no-cache-dir -r /tmp/requirements.txt && \
+    pip3 install --no-cache-dir --force-reinstall --no-deps "numpy==1.26.4"
 
 RUN mkdir -p /models
 
