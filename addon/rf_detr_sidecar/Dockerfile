@@ -1,8 +1,10 @@
-# Debian base with s6-init (PyTorch / RF-DETR). Supervisor passes BUILD_ARCH.
+# Debian Bookworm base (Python 3.11). Trixie/3.13 has no NumPy 1.26 wheels and
+# NumPy 2.x wheels need x86-64-v2 (breaks QNAP/QEMU VMs).
 ARG BUILD_ARCH=amd64
-FROM ghcr.io/hassio-addons/debian-base/${BUILD_ARCH}:9.5.0
+FROM ghcr.io/hassio-addons/debian-base/${BUILD_ARCH}:8.1.4
 
 ENV PIP_BREAK_SYSTEM_PACKAGES=1 \
+    PIP_PREFER_BINARY=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=8000 \
@@ -20,7 +22,9 @@ RUN apt-get update && \
 WORKDIR /app
 
 COPY requirements.txt /tmp/requirements.txt
-RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+RUN pip3 install --no-cache-dir --only-binary=numpy "numpy==1.26.4" && \
+    pip3 install --no-cache-dir -r /tmp/requirements.txt && \
+    pip3 install --no-cache-dir --force-reinstall --no-deps --only-binary=numpy "numpy==1.26.4"
 
 RUN mkdir -p /models
 

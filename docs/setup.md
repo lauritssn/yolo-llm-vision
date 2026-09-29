@@ -196,7 +196,8 @@ Check the add-on **Log** tab. Common issues:
 
 - **Health check failed on first start**: Fixed in add-on **3.0.1+** — the HTTP server starts immediately and loads the model in the background. Update the add-on, uninstall/reinstall if needed, then wait for `Sidecar ready` in the log (model load can take several minutes on QNAP CPU).
 - **Out of memory**: RF-DETR Nano needs roughly 1–2 GB RAM during inference. Use `nano` on low-memory systems.
-- **NumPy X86_V2 error on QNAP/QEMU VM**: Use add-on **3.0.5+**, which pins NumPy 1.26 (NumPy 2.x wheels require x86-64-v2). Enable CPU host passthrough in the VM if possible.
+- **NumPy X86_V2 error on QNAP/QEMU VM**: Use add-on **3.0.5+**, which pins NumPy 1.26 on Python 3.11 (Bookworm base). NumPy 2.x wheels require x86-64-v2. Enable CPU host passthrough in the VM if possible.
+- **Docker build fails compiling NumPy**: Use add-on **3.0.7+** (Bookworm / Python 3.11). Version 3.0.5–3.0.6 used Trixie Python 3.13, which has no NumPy 1.26 wheel.
 - **Build failed / takes very long**: First build downloads PyTorch and dependencies. Let it finish; later updates are faster.
 
 ### "Connection refused" in integration setup
