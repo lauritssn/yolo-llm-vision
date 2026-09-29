@@ -48,6 +48,7 @@ from .const import (
     DETECTION_CLASS_OPTIONS,
     DOMAIN,
 )
+from .hassio import async_discover_sidecar_url
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -75,11 +76,12 @@ def _has_llmvision(hass: HomeAssistant) -> bool:
 
 
 def _sidecar_schema(defaults: dict[str, Any]) -> vol.Schema:
+    default_url = defaults.get(CONF_SIDECAR_URL, DEFAULT_SIDECAR_URL)
     return vol.Schema(
         {
-            vol.Required(
+            vol.Optional(
                 CONF_SIDECAR_URL,
-                default=defaults.get(CONF_SIDECAR_URL, DEFAULT_SIDECAR_URL),
+                default=default_url,
             ): selector.TextSelector(),
         }
     )
@@ -231,6 +233,10 @@ class RfDetrVisionConfigFlow(ConfigFlow, domain=DOMAIN):
             self._draft.update(user_input)
             return await self.async_step_cameras()
         defaults = _merged_config(None, self._draft)
+        if not defaults.get(CONF_SIDECAR_URL):
+            discovered = await async_discover_sidecar_url(self.hass)
+            if discovered:
+                defaults[CONF_SIDECAR_URL] = discovered
         return self.async_show_form(
             step_id=STEP_SIDECAR,
             data_schema=_sidecar_schema(defaults),
@@ -337,6 +343,10 @@ class RfDetrVisionOptionsFlow(OptionsFlow):
         if user_input is not None:
             return await self._save_section(user_input)
         defaults = _merged_config(self.config_entry, self._draft)
+        if not defaults.get(CONF_SIDECAR_URL):
+            discovered = await async_discover_sidecar_url(self.hass)
+            if discovered:
+                defaults[CONF_SIDECAR_URL] = discovered
         return self.async_show_form(
             step_id=STEP_SIDECAR,
             data_schema=_sidecar_schema(defaults),

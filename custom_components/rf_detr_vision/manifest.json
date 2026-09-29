@@ -1,7 +1,7 @@
 {
   "domain": "rf_detr_vision",
   "name": "RF-DETR + LLM Vision",
-  "version": "3.1.1",
+  "version": "3.2.0",
   "documentation": "https://github.com/lauritssn/yolo-llm-vision",
   "issue_tracker": "https://github.com/lauritssn/yolo-llm-vision/issues",
   "after_dependencies": ["camera", "llmvision"],

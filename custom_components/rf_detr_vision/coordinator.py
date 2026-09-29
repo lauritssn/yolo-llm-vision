@@ -94,7 +94,10 @@ class RfDetrVisionCoordinator(DataUpdateCoordinator[dict[str, CameraState]]):
 
     @property
     def sidecar_url(self) -> str:
-        return self._config.get(CONF_SIDECAR_URL, DEFAULT_SIDECAR_URL)
+        from .hassio import resolve_sidecar_url
+
+        configured = self._config.get(CONF_SIDECAR_URL, DEFAULT_SIDECAR_URL)
+        return resolve_sidecar_url(self.hass, configured)
 
     @property
     def confidence_threshold(self) -> float:

@@ -47,15 +47,10 @@ After starting this add-on:
 
 1. **Settings > Devices & Services > Add Integration**
 2. Search **RF-DETR + LLM Vision**
-3. Sidecar URL — try in order:
-
-```
-http://local-rf-detr-sidecar:8000
-http://addon_local_rf_detr_sidecar:8000
-http://<your-haos-ip>:8000
-```
-
+3. Leave **Sidecar URL** empty — the integration auto-detects this add-on via Supervisor using its internal hostname (`http://{repo}-rf-detr-sidecar:8000`, not `localhost`).
 4. Complete the wizard: cameras, AI Task, threat prompt, notifications
+
+Manual URL is only needed for non-Supervisor Docker installs.
 
 ## Verifying the Add-on
 

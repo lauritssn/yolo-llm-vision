@@ -2,6 +2,9 @@
   "exceptions": {
     "no_loaded_entries": {
       "message": "No RF-DETR + LLM Vision configuration entries are loaded. Add the integration first via Settings > Devices & Services."
+    },
+    "sidecar_url_missing": {
+      "message": "RF-DETR sidecar URL is not configured and the RF-DETR Segmentation add-on was not found. Install/start the add-on or set Sidecar URL in integration options."
     }
   },
   "config": {
@@ -13,7 +16,7 @@
           "sidecar_url": "Sidecar URL"
         },
         "data_description": {
-          "sidecar_url": "URL of the RF-DETR sidecar, e.g. http://192.168.1.50:8000"
+          "sidecar_url": "URL of the RF-DETR sidecar. Leave empty to auto-detect the RF-DETR Segmentation add-on via Supervisor (recommended on Home Assistant OS)."
         }
       },
       "cameras": {

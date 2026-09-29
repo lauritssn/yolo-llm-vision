@@ -8,6 +8,10 @@ DOMAIN = "rf_detr_vision"
 
 # Config keys — sidecar & detection
 CONF_SIDECAR_URL = "sidecar_url"
+
+ADDON_SLUG = "rf_detr_sidecar"
+ADDON_PORT = 8000
+DATA_DISCOVERED_SIDECAR_URL = "discovered_sidecar_url"
 CONF_CAMERAS = "cameras"
 CONF_CONFIDENCE_THRESHOLD = "confidence_threshold"
 CONF_DETECTION_CLASSES = "detection_classes"
@@ -33,7 +37,7 @@ CONF_CLEAR_TITLE = "all_clear_notification_title"
 CONF_NOTIFY_INCLUDE_PHOTO = "notify_include_photo"
 
 # Defaults
-DEFAULT_SIDECAR_URL = "http://localhost:8000"
+DEFAULT_SIDECAR_URL = ""
 DEFAULT_CONFIDENCE = 0.6
 DEFAULT_DETECTION_CLASSES = ["person", "dog", "car", "truck", "horse", "cow", "bear"]
 DEFAULT_AI_TASK_NAME = "Security Camera Analysis"

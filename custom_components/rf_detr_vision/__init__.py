@@ -27,6 +27,7 @@ from .const import (
     SERVICE_TEST_PIPELINE,
 )
 from .coordinator import RfDetrVisionCoordinator
+from .hassio import async_store_discovered_sidecar_url, resolve_sidecar_url
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -97,7 +98,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             _LOGGER.exception("No loaded config entry for RF-DETR + LLM Vision")
             raise
         cfg = {**coordinator.config_entry.data, **coordinator.config_entry.options}
-        sidecar_url = cfg.get(CONF_SIDECAR_URL, DEFAULT_SIDECAR_URL)
+        sidecar_url = resolve_sidecar_url(hass, cfg.get(CONF_SIDECAR_URL, DEFAULT_SIDECAR_URL))
+        if not sidecar_url:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="sidecar_url_missing",
+            )
         _LOGGER.debug(
             "Using sidecar URL from config/options: %s",
             sidecar_url,
@@ -196,16 +202,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: RfDetrConfigEntry) -> bo
         dict(entry.options),
     )
     cfg = {**entry.data, **entry.options}
-    sidecar_url = cfg.get(CONF_SIDECAR_URL, DEFAULT_SIDECAR_URL)
-    _LOGGER.debug(
-        "Extracted sidecar URL: %s",
-        sidecar_url,
-    )
+    await async_store_discovered_sidecar_url(hass)
+    sidecar_url = resolve_sidecar_url(hass, cfg.get(CONF_SIDECAR_URL, DEFAULT_SIDECAR_URL))
+    if not sidecar_url:
+        _LOGGER.warning(
+            "RF-DETR sidecar URL not configured and add-on not discovered via Supervisor. "
+            "Install/start the RF-DETR Segmentation add-on or set Sidecar URL in integration options."
+        )
+    else:
+        _LOGGER.debug(
+            "Using sidecar URL: %s",
+            sidecar_url,
+        )
     coordinator = RfDetrVisionCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
     coordinator.start_listening()
 
-    health_ok = await _check_sidecar_health(hass, sidecar_url)
+    health_ok = bool(sidecar_url) and await _check_sidecar_health(hass, sidecar_url)
     _LOGGER.debug(
         "Sidecar health check on startup: %s",
         "passed" if health_ok else "failed",

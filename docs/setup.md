@@ -54,15 +54,22 @@ On HAOS, the sidecar runs as a **Home Assistant add-on**.
 
 #### Sidecar URL for the Integration
 
-When configuring the integration, use one of these URLs:
+On **Home Assistant OS**, leave **Sidecar URL** empty during setup — the integration auto-detects the add-on via the Supervisor API using its internal Docker hostname (not `localhost`).
 
-| URL to try | When to use |
-|---|---|
-| `http://local-rf-detr-sidecar:8000` | Internal Docker hostname (try first) |
-| `http://addon_local_rf_detr_sidecar:8000` | Alternative internal hostname |
-| `http://<your-HAOS-IP>:8000` | Fallback — uses the exposed port |
+| Install source | Internal hostname pattern | Example URL |
+|---|---|---|
+| Local add-on folder | `local-rf-detr-sidecar` | `http://local-rf-detr-sidecar:8000` |
+| GitHub add-on store | `{repo-hash}-rf-detr-sidecar` | Auto-detected (varies per repo) |
 
-Verify: open `http://<sidecar-host>:8000/health` — you should see `"status":"ok"` and `"engine":"rf-detr-seg"`.
+You only need a manual URL for **Docker/container** Home Assistant without Supervisor, e.g. `http://rf-detr-sidecar:8000` on a shared Docker network.
+
+Verify from **Terminal & SSH** add-on (inside HA):
+
+```bash
+curl http://local-rf-detr-sidecar:8000/health
+```
+
+Or use the auto-detected URL shown in the integration setup wizard.
 
 ### Docker / Home Assistant Container
 

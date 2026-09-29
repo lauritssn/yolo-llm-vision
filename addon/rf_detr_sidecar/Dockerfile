@@ -1,38 +1,35 @@
-FROM python:3.12-slim-bookworm
+ARG BUILD_FROM
+FROM ${BUILD_FROM}
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
+ENV PIP_BREAK_SYSTEM_PACKAGES=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    RFDETR_MODEL=nano \
-    CONFIDENCE_THRESHOLD=0.5 \
     PORT=8000 \
     MODELS_DIR=/models
 
+# RF-DETR / OpenCV runtime dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libgl1 libglib2.0-0 && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends \
+      python3 \
+      python3-pip \
+      libgl1 \
+      libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt /tmp/requirements.txt
+RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 RUN mkdir -p /models
 
 COPY main.py .
 COPY static/ static/
-COPY run.sh /run.sh
+COPY run.sh /
+RUN chmod a+x /run.sh
 
-RUN useradd -m -u 10001 appuser && \
-    chown -R appuser:appuser /app /models && \
-    chmod a+x /run.sh
-
-USER appuser
-
-EXPOSE 8000
-
-# /health returns HTTP 200 immediately (status=starting) while the model loads in background.
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
-    CMD python -c "import httpx; r=httpx.get('http://127.0.0.1:8000/health', timeout=8.0); r.raise_for_status(); assert r.json().get('status') in ('ok','starting')"
+# Do NOT add a Docker HEALTHCHECK here.
+# Home Assistant Supervisor manages add-on health. A strict HEALTHCHECK fails on
+# slow NAS hardware while RF-DETR weights load, even though the add-on is fine.
 
 CMD [ "/run.sh" ]
