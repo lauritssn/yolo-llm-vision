@@ -46,7 +46,7 @@ On HAOS, the sidecar runs as a **Home Assistant add-on**.
 
 1. Access your HAOS config directory via Samba, SSH, or the File Editor add-on
 2. Create the folder: `addons/rf_detr_sidecar/`
-3. Copy everything from this repo's `addon/rf_detr_sidecar/` into that folder
+3. Copy everything from this repo's `rf_detr_sidecar/` folder into that folder
 4. Go to **Settings > Add-ons > Add-on Store**
 5. Click the three-dot menu > **Check for updates**
 6. Find **RF-DETR Segmentation** under **Local add-ons** and install it
