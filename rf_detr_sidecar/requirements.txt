@@ -1,4 +1,5 @@
 # Pin NumPy 1.26 for older/QEMU CPUs (NumPy 2.x wheels require x86-64-v2).
+# torch/torchvision: CPU wheels installed in Dockerfile (QNAP has no GPU).
 numpy==1.26.4
 opencv-python-headless==4.10.0.84
 rfdetr>=1.11.0

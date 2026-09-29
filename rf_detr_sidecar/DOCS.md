@@ -8,7 +8,7 @@ Full steps: [README](https://github.com/lauritssn/yolo-llm-vision#quick-start) a
 
 ## Installation time
 
-**First install and start can take several minutes.** The image downloads standalone **CPython 3.12** (Debian’s Python 3.13 cannot use NumPy 1.26 wheels; NumPy 2.x breaks QNAP/QEMU CPUs), installs binary wheels, then loads RF-DETR in the background. Wait for **Sidecar ready** before testing.
+**First install and start can take several minutes.** The image downloads standalone **CPython 3.12**, installs **CPU-only PyTorch** (no CUDA — QNAP has no GPU), then loads RF-DETR in the background. Wait for **Sidecar ready** before testing.
 
 ## How It Works
 

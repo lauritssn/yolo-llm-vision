@@ -13,7 +13,8 @@ ENV PIP_BREAK_SYSTEM_PACKAGES=1 \
     PYTHONUNBUFFERED=1 \
     PORT=8000 \
     MODELS_DIR=/models \
-    PATH="/opt/python/bin:${PATH}"
+    PATH="/opt/python/bin:${PATH}" \
+    CUDA_VISIBLE_DEVICES=""
 
 # OpenCV / PyTorch runtime libs (NumPy wheel bundles its own BLAS — no libopenblas.so.0 needed).
 RUN apt-get update && \
@@ -39,9 +40,13 @@ WORKDIR /app
 
 COPY requirements.txt /tmp/requirements.txt
 
+# CPU-only PyTorch (QNAP has no GPU). Install before rfdetr so pip does not pull CUDA wheels.
 RUN pip install --no-cache-dir "numpy==1.26.4" && \
+    pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir -r /tmp/requirements.txt && \
-    pip install --no-cache-dir --force-reinstall --no-deps "numpy==1.26.4"
+    pip install --no-cache-dir --force-reinstall --no-deps "numpy==1.26.4" && \
+    pip install --no-cache-dir --force-reinstall --no-deps torch torchvision \
+      --index-url https://download.pytorch.org/whl/cpu
 
 RUN mkdir -p /models
 
